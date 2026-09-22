@@ -79,9 +79,10 @@ Everything below follows from that.
 
 ## System Architecture
 
-Four projects. Dependencies point inward, and nothing points back out.
+Five projects. Dependencies point inward, and nothing points back out. Two of them are hosts — the
+API serves HTTP, the worker drains the outbox — and they never reference each other.
 
-![Dependency direction between the four projects](diagrams/readme-01-layers.svg)
+![Dependency direction between the five projects](diagrams/readme-01-layers.svg)
 
 <sub>Source: [`readme-01-layers.excalidraw`](diagrams/readme-01-layers.excalidraw) — open it at excalidraw.com to edit.</sub>
 
@@ -94,7 +95,7 @@ across three places, so every change touches all three. I've done that before. I
 
 ### Runtime shape
 
-![Runtime shape: API, SQL Server, Redis, outbox dispatcher and telemetry](diagrams/readme-02-runtime.svg)
+![Runtime shape: API, SQL Server, Redis, two outbox workers and telemetry](diagrams/readme-02-runtime.svg)
 
 <sub>Source: [`readme-02-runtime.excalidraw`](diagrams/readme-02-runtime.excalidraw) — open it at excalidraw.com to edit.</sub>
 
@@ -282,38 +283,47 @@ site down with it is worse than no cache.
 **The challenge:** Checkout has to send a confirmation email. The email must not be lost if the
 process dies, and must not be sent if the booking rolls back.
 
-**The solution:** The outbox row is written **inside the checkout transaction**. A background
-dispatcher claims rows with one atomic statement and hands them to a handler.
+**The solution:** The outbox row is written **inside the checkout transaction**. A dispatcher in
+the worker process claims rows with one atomic statement and hands them to a handler.
 
 ```sql
-UPDATE TOP (@batchSize) OutboxMessages WITH (READPAST, UPDLOCK, ROWLOCK)
+WITH candidates AS (
+    SELECT TOP (@batchSize) Id, Type, Content, Attempts, ProcessingAtUtc, TraceParent
+    FROM OutboxMessages WITH (READPAST, UPDLOCK, ROWLOCK)
+    WHERE ProcessedOnUtc IS NULL
+      AND Attempts < @maxAttempts
+      AND (ProcessingAtUtc IS NULL
+           OR ProcessingAtUtc < DATEADD(second, -@leaseSeconds, SYSUTCDATETIME()))
+    ORDER BY OccurredOnUtc)
+UPDATE candidates
 SET ProcessingAtUtc = SYSUTCDATETIME(), Attempts = Attempts + 1
-OUTPUT inserted.Id, inserted.Type, inserted.Content, inserted.TraceParent
-WHERE ProcessedOnUtc IS NULL AND Attempts < @maxAttempts
-  AND (ProcessingAtUtc IS NULL OR ProcessingAtUtc < DATEADD(second, -@lease, SYSUTCDATETIME()))
+OUTPUT inserted.Id, inserted.Type, inserted.Content, inserted.Attempts, inserted.TraceParent;
 ```
 
 RabbitMQ was in the plan. It was **built** — topology, publisher confirms, manual ack, a dedupe
 table, a dead-letter queue — and then removed, because I couldn't answer one question: what does it
 do that this table doesn't already do?
 
-`ProcessingAtUtc` is the lease. `Attempts` against `MaxAttempts` is the dead-letter state.
-`READPAST` is what makes N instances safe. The broker would have re-implemented all three in a
+`ProcessingAtUtc` is the lease. `Attempts` against `MaxAttempts` is the dead-letter state. The
+atomic claim is what makes N workers safe, and `READPAST` is what lets them skip each other's rows
+instead of queueing behind them. The broker would have re-implemented all three in a
 second system that can also be down.
 
 **What I gained:**
 - One delivery mechanism, one failure mode, one thing to operate
 - The email can't be sent for a booking that rolled back — same transaction
-- N API instances drain the queue safely with no coordination
+- N worker instances drain the queue safely with no coordination
+- The API does HTTP only. A slow mail server costs a worker thread, never a request thread
 
 **What I traded:**
-- **Email volume and request volume scale together.** They're the same process
+- **Two deployables.** The API and the worker are separate images, and with no worker running,
+  confirmations wait in the table
 - Polling latency: up to 5 seconds before a message is picked up
 - No fan-out to other systems without writing that myself
 
 The isolation a broker sells is kept in the code anyway: a handler implements
-`IOutboxMessageHandler` and never learns how its message arrived. Moving one to its own process
-changes `Program.cs`, not the handler.
+`IOutboxMessageHandler` and never learns how its message arrived. That is why moving dispatch out
+of the API into its own process changed hosting code and not one line of a handler.
 
 ---
 
@@ -417,7 +427,8 @@ docker compose up -d --build
 ```
 
 That's it. The API applies its own migrations at startup, seeds a demo catalogue (6 cities, 20
-hotels, 80 rooms, 5 deals), and reports healthy.
+hotels, 80 rooms, 5 deals), and reports healthy. Then two workers (`hotelbooking-worker-1` and
+`-2`) start and begin draining the outbox.
 
 ```bash
 docker compose ps                                        # wait for hotelbooking-api to be healthy
@@ -462,7 +473,7 @@ curl -s http://localhost:8080/api/cart -H "Authorization: Bearer $TOKEN" | jq
 | `ConnectionStrings__Database` | SQL Server connection | Set by Compose |
 | `ConnectionStrings__Redis` | Redis connection | `redis:6379` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Where telemetry goes | `http://otel-collector:4317` |
-| `Email__Smtp__Host` | SMTP host | `mailpit` |
+| `Email__Smtp__Host` | SMTP host (worker only; the API sends no email) | `mailpit` |
 
 Secrets are never in `appsettings.json` — the committed file has empty placeholders so a missing
 secret **fails loudly at startup** instead of quietly falling back to something insecure.
@@ -477,6 +488,9 @@ dotnet user-secrets set "ConnectionStrings:Database" "Server=localhost,1433;Data
 dotnet user-secrets set "Authentication:Jwt:SigningKey" "$(openssl rand -base64 48)"
 
 dotnet run                                        # migrates and seeds on start
+
+cd src/HotelBooking.Workers
+dotnet run
 ```
 
 ---
@@ -585,7 +599,9 @@ Rate limits are counted **per instance**.
 | **Two guests buy the same night** | The `(RoomId, StayDate)` PK refuses one. 409, never a 500 |
 | **Guest double-clicks checkout** | Idempotency PK catches it. Replay returns the original booking |
 | **Process dies mid-checkout** | Transaction rolls back. No booking, no inventory, no email |
-| **Process dies after commit** | Outbox row survives. The dispatcher sends the email on restart |
+| **Process dies after commit** | Outbox row survives. A worker sends the email |
+| **A worker dies mid-send** | Its lease expires and the other worker picks the row up |
+| **No worker running** | Checkouts still succeed; confirmations wait and `outbox.pending` climbs |
 | **Handler throws** | Lease expires, row is re-claimed, retried up to 5 times |
 | **Handler fails 5 times** | Abandoned and counted on `outbox.abandoned` |
 | **Payment capture fails** | The booking is voided and its nights released; the hold is given back |
@@ -599,13 +615,11 @@ Rate limits are counted **per instance**.
 | --- | --- | --- |
 | Polling interval | 5 s | How often the dispatcher looks |
 | Batch size | 20 | Rows claimed per cycle |
-| Claim lease | 5 min | How long a claim holds before another instance may retry it |
+| Claim lease | 5 min | How long a claim holds before another worker may retry it |
 | Max attempts | 5 | Then abandoned |
 
 Handlers are **at-least-once** and signal failure by throwing. Background services live in
-Infrastructure and are registered by an explicit opt-in call (`AddOutboxDispatcher`) — that call is
-the seam. A handler that outgrows this host moves to its own host without changing a line of the
-handler.
+Infrastructure and are registered only by `AddWorkers`, which only `HotelBooking.Workers` calls.
 
 ---
 
@@ -614,7 +628,7 @@ handler.
 The app emits **OTLP and nothing else** — no Prometheus client library, no Jaeger SDK, no Seq sink.
 Which backends sit behind the collector is a Compose concern, not a code one.
 
-![OTLP from the API and dispatcher through the collector to Jaeger, Seq and Prometheus](diagrams/readme-05-observability.svg)
+![OTLP from the API and the workers through the collector to Jaeger, Seq and Prometheus](diagrams/readme-05-observability.svg)
 
 <sub>Source: [`readme-05-observability.excalidraw`](diagrams/readme-05-observability.excalidraw) — open it at excalidraw.com to edit.</sub>
 
@@ -625,12 +639,13 @@ Make a request, take the `@tr` field from the log line, and the same id finds it
 - **Jaeger** → `http://localhost:16686/trace/<traceId>`
 - **Seq** → filter `@TraceId = '<traceId>'`
 
-Traces cover ASP.NET Core, HttpClient, **SqlClient** and **Redis**, so one trace shows the HTTP
-request, every query it ran and every cache call it made.
+Traces cover ASP.NET Core, HttpClient, **SqlClient**, **Redis** and **SMTP** (MailKit), so one trace
+shows the HTTP request, every query it ran, every cache call it made and the mail server it spoke to.
 
 **The email joins the trace too.** The outbox row stores the `traceparent` of the checkout that
-wrote it. When the dispatcher picks it up seconds later, the email span attaches to the original
-checkout — one trace from "guest pressed book" to "mail server accepted".
+wrote it. When a worker picks it up seconds later, in another process, the email span attaches to
+the original checkout — one trace across `hotelbooking-api` and `hotelbooking-worker`, from "guest
+pressed book" to "mail server accepted".
 
 ### Metrics
 
@@ -668,14 +683,14 @@ Health endpoints are excluded from tracing — a probe every 10 seconds would dr
 
 ## Testing
 
-105 tests across four layers. Each layer proves something the others can't.
+66 tests across four layers. Each layer proves something the others can't.
 
 | Suite | Tests | Proves |
 | --- | --- | --- |
-| **Domain unit** | 44 | Invariants and value objects. No mocks — pure functions in, `Result` out |
-| **Application unit** | 16 | Orchestration: success, not-found, forbidden, conflict, validation |
-| **Integration** | 33 | Real SQL Server + Redis via Testcontainers, over the real HTTP route |
-| **Architecture** | 12 | The dependency rule, enforced by NetArchTest at build time |
+| **Domain unit** | 23 | Invariants and value objects. No mocks — pure functions in, `Result` out |
+| **Application unit** | 14 | Orchestration: success, not-found, forbidden, conflict, validation |
+| **Integration** | 13 | Real SQL Server + Redis via Testcontainers, over the real HTTP route |
+| **Architecture** | 16 | The dependency rule, and that Api and Workers never reference each other |
 
 The test I care about most fires **50 concurrent checkouts for the same room on the same nights**
 and asserts exactly one 201, forty-nine 409s, no 5xx, that every loser got `Booking.RoomUnavailable`
@@ -683,9 +698,10 @@ specifically, and that the ledger ended up with exactly one row per night and on
 **five times**, because a race that passes once has proved nothing. It's the only test that can
 actually falsify the central claim of this project.
 
-Others in that set: the reverse-order multi-room checkout (deadlock ordering), concurrent
-idempotency keys, refresh-token rotation under a race, and a checkout traced end-to-end from the
-HTTP request to the email it sends.
+Others in that set: refresh-token rotation under a race, replay detection killing the whole
+session, logout taking effect immediately (and being refused when the denylist is unreachable),
+twenty parallel registrations with one email creating exactly one user, and a search traced through
+both SQL and Redis.
 
 ---
 
@@ -700,15 +716,16 @@ HTTP request to the email it sends.
 | **Build** | Release, `-warnaserror` — zero warnings or it fails |
 | **Unit tests** | Domain, Application, Architecture |
 | **Integration tests** | Testcontainers against the runner's Docker daemon — real SQL Server and Redis |
-| **Image** | Builds the API image to prove the Dockerfile still works |
+| **Images** | Builds the API and worker images to prove both Dockerfiles still work |
 
 ### CD — after CI goes green on `main`
 
-Builds the image and pushes it to **GitHub Container Registry**, tagged `latest` and the commit SHA:
+Builds both images and pushes them to **GitHub Container Registry**, tagged `latest` and the commit
+SHA:
 
 ```
-ghcr.io/<owner>/hotelbooking-api:latest
-ghcr.io/<owner>/hotelbooking-api:<sha>
+ghcr.io/<owner>/hotelbooking-api:latest      ghcr.io/<owner>/hotelbooking-worker:latest
+ghcr.io/<owner>/hotelbooking-api:<sha>       ghcr.io/<owner>/hotelbooking-worker:<sha>
 ```
 
 ---
@@ -734,12 +751,18 @@ src/
 │   ├── Caching/                   # RedisCacheService, RedisCartRepository, RedisVisitStore
 │   ├── Outbox/                    # dispatcher, store, handlers, the claim SQL
 │   ├── Authentication/            # JWT, refresh tokens, denylist, password hashing
-│   └── Notifications/             # SMTP sender, email templates
+│   ├── Notifications/             # SMTP sender, email templates
+│   ├── Observability/             # Serilog + OpenTelemetry setup shared by both hosts
+│   └── DependencyInjection.cs     # AddInfrastructure, and AddWorkers for the worker host
 │
-└── HotelBooking.Api/              # depends on all, to compose only
-    ├── Endpoints/                 # one class per use case, scanned and mapped
-    ├── Errors/                    # the single Error → ProblemDetails mapping
-    ├── Authentication/  Authorization/  RateLimiting/  Observability/
+├── HotelBooking.Api/              # HTTP only; composes, runs no background service
+│   ├── Endpoints/                 # one class per use case, scanned and mapped
+│   ├── Errors/                    # the single Error → ProblemDetails mapping
+│   ├── Authentication/  Authorization/  RateLimiting/  Observability/
+│   ├── Dockerfile
+│   └── Program.cs
+│
+└── HotelBooking.Workers/          # generic host that drains the outbox; never references Api
     ├── Dockerfile
     └── Program.cs
 
@@ -751,7 +774,7 @@ tests/
 
 .github/workflows/    ci.yml, cd.yml
 observability/        collector and Prometheus config
-docker-compose.yml    API + SQL Server + Redis + Mailpit + the telemetry pipeline
+docker-compose.yml    API + 2 workers + SQL Server + Redis + Mailpit + the telemetry pipeline
 ```
 
 ---
