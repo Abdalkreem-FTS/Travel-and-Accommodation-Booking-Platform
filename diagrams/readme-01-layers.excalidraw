@@ -1,0 +1,712 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "https://excalidraw.com",
+  "elements": [
+    {
+      "id": "el1",
+      "type": "rectangle",
+      "x": 200,
+      "y": 0,
+      "width": 420,
+      "height": 90,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "#d0ebff",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 1373158607,
+      "version": 1,
+      "versionNonce": 239081664,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "el2"
+        },
+        {
+          "type": "arrow",
+          "id": "el9"
+        },
+        {
+          "type": "arrow",
+          "id": "el12"
+        },
+        {
+          "type": "arrow",
+          "id": "el14"
+        }
+      ],
+      "updated": 1,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "el2",
+      "type": "text",
+      "x": 272.5,
+      "y": 20.0,
+      "width": 275.0,
+      "height": 50.0,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 53710185,
+      "version": 1,
+      "versionNonce": 1592467582,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "text": "HotelBooking.Api\nendpoints, DI, middleware",
+      "originalText": "HotelBooking.Api\nendpoints, DI, middleware",
+      "fontSize": 20,
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "el1",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "el3",
+      "type": "rectangle",
+      "x": 200,
+      "y": 170,
+      "width": 420,
+      "height": 90,
+      "angle": 0,
+      "strokeColor": "#f08c00",
+      "backgroundColor": "#fff3bf",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 590620972,
+      "version": 1,
+      "versionNonce": 525901257,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "el4"
+        },
+        {
+          "type": "arrow",
+          "id": "el9"
+        },
+        {
+          "type": "arrow",
+          "id": "el10"
+        },
+        {
+          "type": "arrow",
+          "id": "el13"
+        }
+      ],
+      "updated": 1,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "el4",
+      "type": "text",
+      "x": 228.49999999999997,
+      "y": 190.0,
+      "width": 363.00000000000006,
+      "height": 50.0,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 479341424,
+      "version": 1,
+      "versionNonce": 299655413,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "text": "HotelBooking.Infrastructure\nEF Core, Redis, JWT, SMTP, outbox",
+      "originalText": "HotelBooking.Infrastructure\nEF Core, Redis, JWT, SMTP, outbox",
+      "fontSize": 20,
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "el3",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "el5",
+      "type": "rectangle",
+      "x": 200,
+      "y": 340,
+      "width": 420,
+      "height": 90,
+      "angle": 0,
+      "strokeColor": "#6741d9",
+      "backgroundColor": "#e5dbff",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 1581559893,
+      "version": 1,
+      "versionNonce": 220106708,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "el6"
+        },
+        {
+          "type": "arrow",
+          "id": "el10"
+        },
+        {
+          "type": "arrow",
+          "id": "el11"
+        },
+        {
+          "type": "arrow",
+          "id": "el12"
+        }
+      ],
+      "updated": 1,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "el6",
+      "type": "text",
+      "x": 228.49999999999997,
+      "y": 360.0,
+      "width": 363.00000000000006,
+      "height": 50.0,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 1453201079,
+      "version": 1,
+      "versionNonce": 1590571866,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "text": "HotelBooking.Application\nservices, DTOs, validators, ports",
+      "originalText": "HotelBooking.Application\nservices, DTOs, validators, ports",
+      "fontSize": 20,
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "el5",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "el7",
+      "type": "rectangle",
+      "x": 200,
+      "y": 510,
+      "width": 420,
+      "height": 90,
+      "angle": 0,
+      "strokeColor": "#2f9e44",
+      "backgroundColor": "#d3f9d8",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 1915941033,
+      "version": 1,
+      "versionNonce": 1171165723,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "el8"
+        },
+        {
+          "type": "arrow",
+          "id": "el11"
+        },
+        {
+          "type": "arrow",
+          "id": "el13"
+        },
+        {
+          "type": "arrow",
+          "id": "el14"
+        }
+      ],
+      "updated": 1,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "el8",
+      "type": "text",
+      "x": 200.99999999999997,
+      "y": 530.0,
+      "width": 418.00000000000006,
+      "height": 50.0,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 186699714,
+      "version": 1,
+      "versionNonce": 1268073013,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "text": "HotelBooking.Domain\nentities, value objects, rules, Result",
+      "originalText": "HotelBooking.Domain\nentities, value objects, rules, Result",
+      "fontSize": 20,
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "el7",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "el9",
+      "type": "arrow",
+      "x": 410.0,
+      "y": 96,
+      "width": 0.0,
+      "height": 68,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 906070221,
+      "version": 1,
+      "versionNonce": 68252794,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0.0,
+          0
+        ],
+        [
+          0.0,
+          68
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "el1",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "el3",
+        "focus": 0,
+        "gap": 4
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "el10",
+      "type": "arrow",
+      "x": 410.0,
+      "y": 266,
+      "width": 0.0,
+      "height": 68,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 63989048,
+      "version": 1,
+      "versionNonce": 201209006,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0.0,
+          0
+        ],
+        [
+          0.0,
+          68
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "el3",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "el5",
+        "focus": 0,
+        "gap": 4
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "el11",
+      "type": "arrow",
+      "x": 410.0,
+      "y": 436,
+      "width": 0.0,
+      "height": 68,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 469521478,
+      "version": 1,
+      "versionNonce": 499635469,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0.0,
+          0
+        ],
+        [
+          0.0,
+          68
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "el5",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "el7",
+        "focus": 0,
+        "gap": 4
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "el12",
+      "type": "arrow",
+      "x": 626,
+      "y": 45,
+      "width": 64,
+      "height": 340,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 1085242217,
+      "version": 1,
+      "versionNonce": 1292825379,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          64,
+          0
+        ],
+        [
+          64,
+          340
+        ],
+        [
+          0,
+          340
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "el1",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "el5",
+        "focus": 0,
+        "gap": 4
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "el13",
+      "type": "arrow",
+      "x": 194,
+      "y": 215,
+      "width": 44,
+      "height": 325,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 56985562,
+      "version": 1,
+      "versionNonce": 1205264596,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -44,
+          0
+        ],
+        [
+          -44,
+          325
+        ],
+        [
+          0,
+          325
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "el3",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "el7",
+        "focus": 0,
+        "gap": 4
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "el14",
+      "type": "arrow",
+      "x": 194,
+      "y": 45,
+      "width": 94,
+      "height": 525,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 427000597,
+      "version": 1,
+      "versionNonce": 1537640409,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -94,
+          0
+        ],
+        [
+          -94,
+          525
+        ],
+        [
+          0,
+          525
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "el1",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "el7",
+        "focus": 0,
+        "gap": 4
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "el15",
+      "type": "text",
+      "x": 220,
+      "y": 625,
+      "width": 422.40000000000003,
+      "height": 40.0,
+      "angle": 0,
+      "strokeColor": "#495057",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 1395616197,
+      "version": 1,
+      "versionNonce": 1506083911,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "text": "Domain depends on nothing.\nEnforced by NetArchTest, not by good intentions.",
+      "originalText": "Domain depends on nothing.\nEnforced by NetArchTest, not by good intentions.",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": null,
+      "lineHeight": 1.25,
+      "autoResize": true
+    }
+  ],
+  "appState": {
+    "gridSize": null,
+    "viewBackgroundColor": "#ffffff"
+  },
+  "files": {}
+}
