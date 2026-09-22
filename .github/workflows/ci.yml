@@ -55,20 +55,28 @@ jobs:
         run: ./tests/HotelBooking.Api.IntegrationTests/bin/Release/net10.0/HotelBooking.Api.IntegrationTests
 
   image:
-    name: Build image
+    name: Build ${{ matrix.image }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
+    strategy:
+      matrix:
+        include:
+          - image: hotelbooking-api
+            dockerfile: src/HotelBooking.Api/Dockerfile
+          - image: hotelbooking-worker
+            dockerfile: src/HotelBooking.Workers/Dockerfile
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Build the API image
+      - name: Build the image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: src/HotelBooking.Api/Dockerfile
+          file: ${{ matrix.dockerfile }}
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
