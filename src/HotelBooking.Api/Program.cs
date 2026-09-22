@@ -20,16 +20,10 @@ using Serilog.Context;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.UseSerilog(ObservabilityExtensions.ConfigureSerilog, writeToProviders: true);
-
 builder.AddApiObservability();
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
-
-builder.Services.AddOutboxDispatcher(builder.Configuration);
-
-builder.Services.AddNotifications(builder.Configuration);
 
 builder.Services.AddRequestTimeouts(options =>
     options.DefaultPolicy = new RequestTimeoutPolicy { Timeout = TimeSpan.FromSeconds(30) });

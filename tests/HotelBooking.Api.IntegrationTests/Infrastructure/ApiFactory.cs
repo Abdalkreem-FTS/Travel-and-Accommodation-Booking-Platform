@@ -7,7 +7,6 @@ using HotelBooking.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -149,9 +148,6 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Authentication:Jwt:SigningKey", SigningKey);
 
         builder.UseSetting("RateLimits:Enabled", "false");
-
-        builder.UseSetting("Email:Smtp:Host", "localhost");
-        builder.UseSetting("Email:Smtp:FromAddress", "reservations@hotelbooking.test");
 
         builder.UseSetting("OTEL_EXPORTER_OTLP_ENDPOINT", string.Empty);
 

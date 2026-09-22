@@ -13,6 +13,7 @@ public sealed class LayerDependencyTests
     private const string ApplicationNamespace = "HotelBooking.Application";
     private const string InfrastructureNamespace = "HotelBooking.Infrastructure";
     private const string ApiNamespace = "HotelBooking.Api";
+    private const string WorkersNamespace = "HotelBooking.Workers";
 
     private const string EfCore = "Microsoft.EntityFrameworkCore";
     private const string Redis = "StackExchange.Redis";
@@ -30,7 +31,9 @@ public sealed class LayerDependencyTests
         EfCore, Redis, AspNetCore,
     ];
 
-    public static TheoryData<string> InfrastructureForbidden => [ApiNamespace];
+    public static TheoryData<string> InfrastructureForbidden => [ApiNamespace, WorkersNamespace];
+
+    public static TheoryData<string> WorkersForbidden => [ApiNamespace, AspNetCore];
 
     [Theory]
     [MemberData(nameof(DomainForbidden))]
@@ -46,6 +49,15 @@ public sealed class LayerDependencyTests
     [MemberData(nameof(InfrastructureForbidden))]
     public void Infrastructure_ForEachHostProject_DoesNotDependOnIt(string forbidden) =>
         AssertNoDependency(Infrastructure.AssemblyReference.Assembly, forbidden);
+
+    [Theory]
+    [MemberData(nameof(WorkersForbidden))]
+    public void Workers_ForEachWebTarget_DoesNotDependOnIt(string forbidden) =>
+        AssertNoDependency(Workers.AssemblyReference.Assembly, forbidden);
+
+    [Fact]
+    public void Api_DoesNotDependOnTheWorkerHost() =>
+        AssertNoDependency(Api.AssemblyReference.Assembly, WorkersNamespace);
 
     private static void AssertNoDependency(Assembly assembly, string forbidden)
     {

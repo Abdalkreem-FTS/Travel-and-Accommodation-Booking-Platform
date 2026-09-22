@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <UserSecretsId>hotelbooking-api-17bbf303-e875-47c5-bdf0-1d8194d36cf5</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../HotelBooking.Infrastructure/HotelBooking.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

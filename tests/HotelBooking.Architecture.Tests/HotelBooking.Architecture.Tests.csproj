@@ -9,6 +9,7 @@
     <ProjectReference Include="../../src/HotelBooking.Application/HotelBooking.Application.csproj" />
     <ProjectReference Include="../../src/HotelBooking.Infrastructure/HotelBooking.Infrastructure.csproj" />
     <ProjectReference Include="../../src/HotelBooking.Api/HotelBooking.Api.csproj" />
+    <ProjectReference Include="../../src/HotelBooking.Workers/HotelBooking.Workers.csproj" />
   </ItemGroup>
 
 </Project>

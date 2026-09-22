@@ -1,3 +1,7 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -6,7 +10,7 @@ using Serilog;
 using Serilog.Formatting.Compact;
 using Serilog.Sinks.OpenTelemetry;
 
-namespace HotelBooking.Api.Observability;
+namespace HotelBooking.Infrastructure.Observability;
 
 public static class ObservabilityExtensions
 {
@@ -14,52 +18,66 @@ public static class ObservabilityExtensions
 
     private const string ServiceNameKey = "OTEL_SERVICE_NAME";
 
-    public static IHostApplicationBuilder AddApiObservability(this IHostApplicationBuilder builder)
+    public static IHostApplicationBuilder AddObservability(
+        this IHostApplicationBuilder builder,
+        Action<TracerProviderBuilder>? tracing = null,
+        Action<MeterProviderBuilder>? metrics = null)
     {
         var otlpEndpoint = OtlpEndpoint(builder.Configuration);
 
+        builder.Services.AddSerilog(
+            (provider, logger) => ConfigureSerilog(
+                provider.GetRequiredService<IConfiguration>(),
+                provider.GetRequiredService<IHostEnvironment>(),
+                logger));
+
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource
-                .AddService(ServiceName(builder))
+                .AddService(ServiceName(builder.Configuration, builder.Environment))
                 .AddAttributes(ResourceAttributes(builder.Environment)))
-            .WithTracing(tracing =>
+            .WithTracing(tracer =>
             {
-                tracing.AddAspNetCoreInstrumentation(options => options.Filter = IsTraceworthy)
-                    .AddHttpClientInstrumentation()
+                tracing?.Invoke(tracer);
+
+                tracer.AddHttpClientInstrumentation()
                     .AddSqlClientInstrumentation(options => options.RecordException = true)
                     .AddRedisInstrumentation()
-                    .AddSource(Application.Telemetry.ActivitySourceName);
+                    .AddSource(Application.Telemetry.ActivitySourceName)
+                    .AddSource(MailKit.Telemetry.SmtpClient.ActivitySourceName);
 
                 if (otlpEndpoint is not null)
                 {
-                    tracing.AddOtlpExporter();
+                    tracer.AddOtlpExporter();
                 }
             })
-            .WithMetrics(metrics =>
+            .WithMetrics(meter =>
             {
-                metrics
-                    .AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation()
+                metrics?.Invoke(meter);
+
+                meter.AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
                     .AddSqlClientInstrumentation()
                     .AddMeter(Application.Telemetry.MeterName);
 
                 if (otlpEndpoint is not null)
                 {
-                    metrics.AddOtlpExporter();
+                    meter.AddOtlpExporter();
                 }
             });
 
         return builder;
     }
 
-    public static void ConfigureSerilog(HostBuilderContext context, LoggerConfiguration logger)
+    private static void ConfigureSerilog(
+        IConfiguration configuration,
+        IHostEnvironment environment,
+        LoggerConfiguration logger)
     {
-        logger.ReadFrom.Configuration(context.Configuration)
+        logger.ReadFrom.Configuration(configuration)
             .Enrich.FromLogContext()
             .WriteTo.Console(new CompactJsonFormatter());
 
-        var otlpEndpoint = OtlpEndpoint(context.Configuration);
+        var otlpEndpoint = OtlpEndpoint(configuration);
 
         if (otlpEndpoint is null)
         {
@@ -77,10 +95,10 @@ public static class ObservabilityExtensions
 
             options.ResourceAttributes = new Dictionary<string, object>(StringComparer.Ordinal)
             {
-                ["service.name"] = ServiceName(context.Configuration, context.HostingEnvironment),
+                ["service.name"] = ServiceName(configuration, environment),
             };
 
-            foreach (var (key, value) in ResourceAttributes(context.HostingEnvironment))
+            foreach (var (key, value) in ResourceAttributes(environment))
             {
                 options.ResourceAttributes[key] = value;
             }
@@ -94,18 +112,12 @@ public static class ObservabilityExtensions
             ["service.instance.id"] = Environment.MachineName
         };
 
-    private static bool IsTraceworthy(HttpContext context) =>
-        !context.Request.Path.StartsWithSegments("/health", StringComparison.OrdinalIgnoreCase);
-
     private static string? OtlpEndpoint(IConfiguration configuration)
     {
         var endpoint = configuration[OtlpEndpointKey];
 
         return string.IsNullOrWhiteSpace(endpoint) ? null : endpoint;
     }
-
-    private static string ServiceName(IHostApplicationBuilder builder) =>
-        ServiceName(builder.Configuration, builder.Environment);
 
     private static string ServiceName(IConfiguration configuration, IHostEnvironment environment)
     {

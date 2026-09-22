@@ -101,7 +101,12 @@ public static class DependencyInjection
             return services;
         }
 
-        public IServiceCollection AddOutboxDispatcher(IConfiguration configuration)
+        public IServiceCollection AddWorkers(IConfiguration configuration) =>
+            services
+                .AddOutboxDispatcher(configuration)
+                .AddNotifications(configuration);
+
+        private IServiceCollection AddOutboxDispatcher(IConfiguration configuration)
         {
             services.Configure<OutboxOptions>(configuration.GetSection(OutboxOptions.SectionName));
 
@@ -112,7 +117,7 @@ public static class DependencyInjection
             return services;
         }
 
-        public IServiceCollection AddOutboxHandler<THandler>()
+        private IServiceCollection AddOutboxHandler<THandler>()
             where THandler : class, IOutboxMessageHandler
         {
             services.AddScoped<IOutboxMessageHandler, THandler>();
@@ -120,7 +125,7 @@ public static class DependencyInjection
             return services;
         }
 
-        public IServiceCollection AddNotifications(IConfiguration configuration)
+        private IServiceCollection AddNotifications(IConfiguration configuration)
         {
             services.AddOptions<SmtpOptions>()
                 .Bind(configuration.GetSection(SmtpOptions.SectionName))
@@ -136,6 +141,8 @@ public static class DependencyInjection
                 .ValidateOnStart();
 
             services.AddSingleton<IEmailSender, SmtpEmailSender>();
+
+            MailKit.Telemetry.SmtpClient.Configure();
 
             return services.AddOutboxHandler<SendBookingConfirmationHandler>();
         }

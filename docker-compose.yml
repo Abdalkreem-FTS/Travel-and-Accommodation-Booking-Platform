@@ -14,21 +14,36 @@ services:
       ConnectionStrings__Database: "Server=sqlserver,1433;Database=HotelBooking;User Id=sa;Password=${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env};TrustServerCertificate=True"
       ConnectionStrings__Redis: redis:6379
       Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY in .env}
-      Email__Smtp__Host: mailpit
-      Email__Smtp__Port: 1025
-      Email__Smtp__FromAddress: reservations@hotelbooking.local
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     ports: ["8080:8080"]
     depends_on:
       sqlserver: { condition: service_healthy }
       redis: { condition: service_healthy }
-      mailpit: { condition: service_healthy }
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/ready || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 12
       start_period: 30s
+
+  worker:
+    build:
+      context: .
+      dockerfile: src/HotelBooking.Workers/Dockerfile
+    image: hotelbooking-worker:local
+    deploy:
+      replicas: 2
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__Database: "Server=sqlserver,1433;Database=HotelBooking;User Id=sa;Password=${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env};TrustServerCertificate=True"
+      ConnectionStrings__Redis: redis:6379
+      Email__Smtp__Host: mailpit
+      Email__Smtp__Port: 1025
+      Email__Smtp__FromAddress: reservations@hotelbooking.local
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on:
+      api: { condition: service_healthy }
+      mailpit: { condition: service_healthy }
 
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2025-CU9-ubuntu-24.04
