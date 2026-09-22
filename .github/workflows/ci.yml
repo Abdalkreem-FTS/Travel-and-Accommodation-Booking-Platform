@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  CI: true
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore HotelBooking.slnx
+
+      - name: Verify formatting
+        run: dotnet format HotelBooking.slnx --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build HotelBooking.slnx --configuration Release --no-restore -warnaserror
+
+      - name: Domain unit tests
+        run: ./tests/HotelBooking.Domain.UnitTests/bin/Release/net10.0/HotelBooking.Domain.UnitTests
+
+      - name: Application unit tests
+        run: ./tests/HotelBooking.Application.UnitTests/bin/Release/net10.0/HotelBooking.Application.UnitTests
+
+      - name: Architecture tests
+        run: ./tests/HotelBooking.Architecture.Tests/bin/Release/net10.0/HotelBooking.Architecture.Tests
+
+      - name: Integration tests
+        run: ./tests/HotelBooking.Api.IntegrationTests/bin/Release/net10.0/HotelBooking.Api.IntegrationTests
+
+  image:
+    name: Build image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/HotelBooking.Api/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
