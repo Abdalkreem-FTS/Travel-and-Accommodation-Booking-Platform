@@ -1,8 +1,6 @@
 using HotelBooking.Api.Errors;
-using HotelBooking.Api.RateLimiting;
 using HotelBooking.Application.Users;
 using HotelBooking.Application.Users.Dtos;
-using Microsoft.AspNetCore.RateLimiting;
 
 namespace HotelBooking.Api.Endpoints.Users;
 
@@ -29,6 +27,5 @@ public sealed class RegisterUserEndpoint : IEndpoint
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status429TooManyRequests)
-            .RequireRateLimiting(RateLimitPolicies.Auth)
             .AllowAnonymous();
 }

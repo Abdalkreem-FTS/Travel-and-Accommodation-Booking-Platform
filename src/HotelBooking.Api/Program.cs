@@ -3,8 +3,8 @@ using HotelBooking.Api.Authorization;
 using HotelBooking.Api.Documentation;
 using HotelBooking.Api.Endpoints;
 using HotelBooking.Api.Errors;
+using HotelBooking.Api.Networking;
 using HotelBooking.Api.Observability;
-using HotelBooking.Api.RateLimiting;
 using HotelBooking.Application;
 using HotelBooking.Infrastructure;
 
@@ -16,7 +16,6 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http.Timeouts;
 
 using Serilog;
-using Serilog.Context;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,20 +29,16 @@ builder.Services.AddRequestTimeouts(options =>
 
 builder.Services.AddApiAuthentication(builder.Configuration);
 builder.Services.AddApiAuthorization();
-builder.Services.AddApiRateLimiting(builder.Configuration);
+builder.Services.AddGatewayForwardedHeaders();
 builder.Services.AddApiProblemDetails();
 builder.Services.AddApiDocumentation();
 builder.Services.AddEndpoints();
 
 var app = builder.Build();
 
-app.Use(async (context, next) =>
-{
-    using (LogContext.PushProperty("ClientIp", context.Connection.RemoteIpAddress?.ToString()))
-    {
-        await next(context);
-    }
-});
+app.UseForwardedHeaders();
+
+app.UseMiddleware<RequestIdMiddleware>();
 
 app.UseSerilogRequestLogging();
 
@@ -56,8 +51,6 @@ app.UseApiDocumentation();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.UseRateLimiter();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false })
     .AllowAnonymous();

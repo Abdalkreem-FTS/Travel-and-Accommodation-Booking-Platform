@@ -9,15 +9,17 @@ namespace HotelBooking.Architecture.Tests;
 /// </summary>
 public sealed class LayerDependencyTests
 {
-    // private const string DomainNamespace = "HotelBooking.Domain";
     private const string ApplicationNamespace = "HotelBooking.Application";
     private const string InfrastructureNamespace = "HotelBooking.Infrastructure";
     private const string ApiNamespace = "HotelBooking.Api";
     private const string WorkersNamespace = "HotelBooking.Workers";
+    private const string DomainNamespace = "HotelBooking.Domain";
+    private const string GatewayNamespace = "HotelBooking.Gateway";
 
     private const string EfCore = "Microsoft.EntityFrameworkCore";
     private const string Redis = "StackExchange.Redis";
     private const string AspNetCore = "Microsoft.AspNetCore";
+    private const string RateLimiting = "Microsoft.AspNetCore.RateLimiting";
 
     public static TheoryData<string> DomainForbidden =>
     [
@@ -34,6 +36,13 @@ public sealed class LayerDependencyTests
     public static TheoryData<string> InfrastructureForbidden => [ApiNamespace, WorkersNamespace];
 
     public static TheoryData<string> WorkersForbidden => [ApiNamespace, AspNetCore];
+
+    public static TheoryData<string> GatewayForbidden =>
+    [
+        DomainNamespace, ApplicationNamespace, InfrastructureNamespace, ApiNamespace, WorkersNamespace,
+    ];
+
+    public static TheoryData<string> ApiForbidden => [WorkersNamespace, GatewayNamespace, RateLimiting];
 
     [Theory]
     [MemberData(nameof(DomainForbidden))]
@@ -55,9 +64,15 @@ public sealed class LayerDependencyTests
     public void Workers_ForEachWebTarget_DoesNotDependOnIt(string forbidden) =>
         AssertNoDependency(Workers.AssemblyReference.Assembly, forbidden);
 
-    [Fact]
-    public void Api_DoesNotDependOnTheWorkerHost() =>
-        AssertNoDependency(Api.AssemblyReference.Assembly, WorkersNamespace);
+    [Theory]
+    [MemberData(nameof(ApiForbidden))]
+    public void Api_ForEachOtherHostOrASecondRateLimiter_DoesNotDependOnIt(string forbidden) =>
+        AssertNoDependency(Api.AssemblyReference.Assembly, forbidden);
+
+    [Theory]
+    [MemberData(nameof(GatewayForbidden))]
+    public void Gateway_ForEachSolutionLayer_DoesNotDependOnIt(string forbidden) =>
+        AssertNoDependency(Gateway.AssemblyReference.Assembly, forbidden);
 
     private static void AssertNoDependency(Assembly assembly, string forbidden)
     {

@@ -108,18 +108,6 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
                 builder.UseSetting("ConnectionStrings:Redis", "127.0.0.1:1,connectTimeout=100,abortConnect=false"))
             .CreateClient();
 
-    private HttpClient CreateClientWithSettings(params (string Key, string Value)[] settings) =>
-        WithWebHostBuilder(builder =>
-        {
-            foreach (var (key, value) in settings)
-            {
-                builder.UseSetting(key, value);
-            }
-        }).CreateClient();
-
-    public HttpClient CreateClientWithSetting(string key, string value) =>
-        CreateClientWithSettings((key, value));
-
     public override async ValueTask DisposeAsync()
     {
         if (_resetConnection is not null)
@@ -147,7 +135,6 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("ConnectionStrings:Redis", _redis.GetConnectionString());
         builder.UseSetting("Authentication:Jwt:SigningKey", SigningKey);
 
-        builder.UseSetting("RateLimits:Enabled", "false");
 
         builder.UseSetting("OTEL_EXPORTER_OTLP_ENDPOINT", string.Empty);
 

@@ -28,16 +28,14 @@ public sealed class RegisterUserEndpointTests(ApiFactory factory) : IntegrationT
     [Fact]
     public async Task Post_TwentyTimesInParallelWithOneEmail_CreatesExactlyOneUserAndNeverA500()
     {
-        using var client = Factory.CreateClientWithSetting("RateLimits:RegistrationsPerAddress", "100");
-
         var responses = await Task.WhenAll(
-            Enumerable.Range(0, 20).Select(_ => RegisterAsync("race@example.com", client: client)));
+            Enumerable.Range(0, 20).Select(_ => RegisterAsync("race@example.com")));
 
         responses.Count(response => response.StatusCode == HttpStatusCode.Created).ShouldBe(1);
         responses.Count(response => response.StatusCode == HttpStatusCode.Conflict).ShouldBe(19);
         responses.ShouldNotContain(response => (int)response.StatusCode >= 500);
 
-        (await LoginAsync("race@example.com", client: client)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await LoginAsync("race@example.com")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
     internal sealed record ProblemBody(

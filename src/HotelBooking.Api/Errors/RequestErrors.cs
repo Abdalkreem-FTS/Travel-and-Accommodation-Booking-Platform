@@ -32,10 +32,6 @@ internal static class RequestErrors
         "Request.Timeout",
         "The request took too long to complete and was abandoned.");
 
-    internal static readonly Error TooManyRequests = Error.TooManyRequests(
-        "Request.TooManyRequests",
-        "Too many attempts. Wait for the period given in the Retry-After header and try again.");
-
     internal static Error? ForFrameworkStatus(int? statusCode) => statusCode switch
     {
         StatusCodes.Status401Unauthorized => Unauthenticated,

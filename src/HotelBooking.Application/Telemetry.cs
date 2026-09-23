@@ -87,10 +87,6 @@ public static class Telemetry
             "catalog.deletes.refused",
             description: "Catalog deletes refused because something still references the record.");
 
-    public static readonly Counter<long> RateLimitRejections =
-        Meter.CreateCounter<long>(
-            "http.ratelimit.rejected", description: "Requests refused by a rate limit.");
-
     public static readonly Counter<long> CacheHits =
         Meter.CreateCounter<long>(
             "cache.hits",

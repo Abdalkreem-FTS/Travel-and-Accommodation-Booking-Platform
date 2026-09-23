@@ -1,8 +1,6 @@
 using HotelBooking.Api.Errors;
-using HotelBooking.Api.RateLimiting;
 using HotelBooking.Application.Authentication;
 using HotelBooking.Application.Authentication.Dtos;
-using Microsoft.AspNetCore.RateLimiting;
 
 namespace HotelBooking.Api.Endpoints.Sessions;
 
@@ -27,6 +25,5 @@ public sealed class CreateSessionEndpoint : IEndpoint
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status429TooManyRequests)
-            .RequireRateLimiting(RateLimitPolicies.Auth)
             .AllowAnonymous();
 }
