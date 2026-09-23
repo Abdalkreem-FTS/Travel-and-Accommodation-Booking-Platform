@@ -1,30 +1,77 @@
 name: hotelbooking
 
+x-api: &api
+  build:
+    context: .
+    dockerfile: src/HotelBooking.Api/Dockerfile
+  image: hotelbooking-api:local
+  environment:
+    ASPNETCORE_ENVIRONMENT: Development
+    ASPNETCORE_HTTP_PORTS: 8080
+    ConnectionStrings__Database: "Server=sqlserver,1433;Database=HotelBooking;User Id=sa;Password=${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env};TrustServerCertificate=True"
+    ConnectionStrings__Redis: redis:6379
+    Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY in .env}
+    ForwardedHeaders__GatewayAddress: 172.30.0.250
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+  depends_on:
+    sqlserver: { condition: service_healthy }
+    redis: { condition: service_healthy }
+  healthcheck:
+    test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/ready || exit 1"]
+    interval: 10s
+    timeout: 3s
+    retries: 12
+    start_period: 30s
+
 services:
 
-  api:
+  api-1:
+    <<: *api
+    hostname: api-1
+    container_name: hotelbooking-api-1
+
+  api-2:
+    <<: *api
+    hostname: api-2
+    container_name: hotelbooking-api-2
+    depends_on:
+      api-1: { condition: service_healthy }
+
+  api-3:
+    <<: *api
+    hostname: api-3
+    container_name: hotelbooking-api-3
+    depends_on:
+      api-1: { condition: service_healthy }
+
+  gateway:
     build:
       context: .
-      dockerfile: src/HotelBooking.Api/Dockerfile
-    image: hotelbooking-api:local
-    container_name: hotelbooking-api
+      dockerfile: src/HotelBooking.Gateway/Dockerfile
+    image: hotelbooking-gateway:local
+    container_name: hotelbooking-gateway
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_HTTP_PORTS: 8080
-      ConnectionStrings__Database: "Server=sqlserver,1433;Database=HotelBooking;User Id=sa;Password=${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env};TrustServerCertificate=True"
-      ConnectionStrings__Redis: redis:6379
-      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY in .env}
+      Gateway__ExposeUpstream: "true"
+      ReverseProxy__Clusters__api__Destinations__api-1__Address: http://api-1:8080
+      ReverseProxy__Clusters__api__Destinations__api-2__Address: http://api-2:8080
+      ReverseProxy__Clusters__api__Destinations__api-3__Address: http://api-3:8080
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     ports: ["8080:8080"]
+    networks:
+      default: { ipv4_address: 172.30.0.250 }
     depends_on:
-      sqlserver: { condition: service_healthy }
-      redis: { condition: service_healthy }
+      otel-collector: { condition: service_started }
+      api-1: { condition: service_healthy }
+      api-2: { condition: service_healthy }
+      api-3: { condition: service_healthy }
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/ready || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/live || exit 1"]
       interval: 10s
       timeout: 3s
-      retries: 12
-      start_period: 30s
+      retries: 6
+      start_period: 10s
 
   worker:
     build:
@@ -42,7 +89,7 @@ services:
       Email__Smtp__FromAddress: reservations@hotelbooking.local
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on:
-      api: { condition: service_healthy }
+      api-1: { condition: service_healthy }
       mailpit: { condition: service_healthy }
 
   sqlserver:
@@ -125,6 +172,12 @@ services:
       - prometheus-data:/prometheus
     ports: ["9090:9090"]
     depends_on: [otel-collector]
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
 
 volumes:
   sqlserver-data:
