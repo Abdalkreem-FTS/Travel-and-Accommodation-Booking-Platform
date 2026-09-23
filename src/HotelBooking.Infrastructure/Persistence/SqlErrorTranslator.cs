@@ -20,6 +20,7 @@ internal static class SqlErrorTranslator
     private static readonly (string ConstraintName, Func<Error> ToError)[] KnownConstraints =
     [
         ("IX_Users_Email", () => UserErrors.EmailAlreadyRegistered),
+        ("PK_UserRoles", () => UserErrors.RoleGrantRaced),
         ("IX_Cities_Country_Name", () => CityErrors.NameAlreadyUsedInCountry),
         ("IX_Hotels_CityId_Name", () => HotelErrors.NameAlreadyUsedInCity),
         ("IX_Rooms_HotelId_Number", () => RoomErrors.NumberAlreadyUsedInHotel),

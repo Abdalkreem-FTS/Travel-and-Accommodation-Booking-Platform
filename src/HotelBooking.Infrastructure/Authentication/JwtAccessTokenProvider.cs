@@ -64,7 +64,7 @@ public sealed class JwtAccessTokenProvider : IAccessTokenProvider
                 [JwtRegisteredClaimNames.Sub] = user.Id.ToString(),
                 [JwtRegisteredClaimNames.Jti] = jti,
                 [JwtRegisteredClaimNames.Email] = user.Email.Value,
-                [ClaimNames.Role] = user.Role.ToString(),
+                [ClaimNames.Role] = user.Roles.Select(grant => grant.Role.ToString()).ToArray(),
                 [ClaimNames.SessionId] = sessionId.ToString()
             }
         };

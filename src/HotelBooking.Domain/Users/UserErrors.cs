@@ -24,4 +24,25 @@ public static class UserErrors
 
     public static Error NotFound => Error.NotFound(
         "User.NotFound", "No such user.");
+
+    public static Error RoleNotGranted => Error.NotFound(
+        "User.RoleNotGranted", "That user does not hold that role.");
+
+    public static Error LastRoleCannotBeRevoked => Error.Conflict(
+        "User.LastRoleCannotBeRevoked", "A user must keep at least one role.");
+
+    public static Error RoleGrantRaced => Error.Conflict(
+        "User.RoleGrantRaced", "That role was granted by another request. Try again.");
+
+    public static Error UnknownRole => Error.Validation(
+        "User.UnknownRole", "role", $"Role must be one of: {string.Join(", ", Enum.GetNames<UserRole>())}.");
+
+    public static Error CannotChangeYourOwnRoles => Error.Forbidden(
+        "User.CannotChangeYourOwnRoles",
+        "You cannot revoke a role from yourself. Ask another administrator.");
+
+    public static Error RoleRevocationIncomplete => Error.Unavailable(
+        "User.RoleRevocationIncomplete",
+        "The role was revoked and the sessions were ended, but the access tokens already issued "
+        + "could not be revoked yet. Please retry.");
 }

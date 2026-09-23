@@ -7,12 +7,12 @@ public sealed record UserDto(
     string Email,
     string FirstName,
     string LastName,
-    string Role)
+    IReadOnlyList<string> Roles)
 {
     public static UserDto From(User user) => new(
         user.Id,
         user.Email.Value,
         user.FirstName,
         user.LastName,
-        user.Role.ToString());
+        [.. user.Roles.Select(grant => grant.Role.ToString())]);
 }

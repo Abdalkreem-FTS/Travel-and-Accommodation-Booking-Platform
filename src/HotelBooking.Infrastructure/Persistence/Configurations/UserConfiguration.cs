@@ -39,13 +39,24 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(User.MaxNameLength)
             .IsRequired();
 
-        builder.Property(user => user.Role)
-            .HasConversion<int>()
-            .IsRequired();
-
         builder.Property(user => user.CreatedAtUtc).IsRequired();
 
         builder.Property(user => user.IsDeleted).HasDefaultValue(false);
+
+        builder.OwnsMany(user => user.Roles, grant =>
+        {
+            grant.ToTable("UserRoles");
+
+            grant.WithOwner().HasForeignKey("UserId");
+
+            grant.HasKey("UserId", nameof(UserRoleGrant.Role));
+
+            grant.Property(held => held.Role)
+                .HasConversion<int>()
+                .ValueGeneratedNever();
+
+            grant.Property(held => held.GrantedAtUtc).IsRequired();
+        });
 
         builder.Ignore(user => user.DomainEvents);
 

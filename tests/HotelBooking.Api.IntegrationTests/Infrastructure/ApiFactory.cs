@@ -1,21 +1,17 @@
 using HotelBooking.Api.Endpoints;
 using HotelBooking.Api.IntegrationTests.Observability;
+using HotelBooking.Application.Abstractions;
 using HotelBooking.Domain.Common;
 using HotelBooking.Domain.Users;
 using HotelBooking.Infrastructure.Persistence;
-
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-
 using OpenTelemetry.Trace;
-
 using Respawn;
-
 using StackExchange.Redis;
-
 using Testcontainers.MsSql;
 using Testcontainers.Redis;
 
@@ -86,7 +82,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             .GetByEmailAsync(Email.Create(email).Value)
                    ?? throw new InvalidOperationException($"No user is registered as '{email}'.");
 
-        context.Entry(user).Property(u => u.Role).CurrentValue = UserRole.Admin;
+        user.Grant(UserRole.Admin, scope.ServiceProvider.GetRequiredService<IDateTimeProvider>().UtcNow);
 
         await context.SaveChangesAsync();
     }

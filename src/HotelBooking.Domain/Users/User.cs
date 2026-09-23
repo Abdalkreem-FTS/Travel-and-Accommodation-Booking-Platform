@@ -9,13 +9,14 @@ public sealed class User : AggregateRoot<Guid>
 {
     public const int MaxNameLength = 100;
 
+    private readonly List<UserRoleGrant> _roles = [];
+
     private User(
         Guid id,
         Email email,
         string passwordHash,
         string firstName,
         string lastName,
-        UserRole role,
         DateTimeOffset createdAtUtc)
         : base(id)
     {
@@ -23,7 +24,6 @@ public sealed class User : AggregateRoot<Guid>
         PasswordHash = passwordHash;
         FirstName = firstName;
         LastName = lastName;
-        Role = role;
         CreatedAtUtc = createdAtUtc;
     }
 
@@ -43,11 +43,11 @@ public sealed class User : AggregateRoot<Guid>
 
     public string LastName { get; private set; }
 
-    public UserRole Role { get; private set; }
-
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
     public bool IsDeleted { get; private set; }
+
+    public IReadOnlyList<UserRoleGrant> Roles => _roles;
 
     public static Result<User> Register(
         Guid id,
@@ -73,12 +73,47 @@ public sealed class User : AggregateRoot<Guid>
             return errors;
         }
 
-        var user = new User(id, email, passwordHash, first, last, UserRole.User, nowUtc);
+        var user = new User(id, email, passwordHash, first, last, nowUtc);
+
+        user._roles.Add(UserRoleGrant.Of(UserRole.User, nowUtc));
 
         // user.Raise(new UserRegistered(eventId, user.Id, email.Value, user.FirstName, nowUtc));
         _ = eventId;
 
         return user;
+    }
+
+    public bool HasRole(UserRole role) => _roles.Exists(grant => grant.Role == role);
+
+    public Result<Updated> Grant(UserRole role, DateTimeOffset nowUtc)
+    {
+        if (HasRole(role))
+        {
+            return Result.Updated;
+        }
+
+        _roles.Add(UserRoleGrant.Of(role, nowUtc));
+
+        return Result.Updated;
+    }
+
+    public Result<Updated> Revoke(UserRole role)
+    {
+        var grant = _roles.Find(held => held.Role == role);
+
+        if (grant is null)
+        {
+            return UserErrors.RoleNotGranted;
+        }
+
+        if (_roles.Count == 1)
+        {
+            return UserErrors.LastRoleCannotBeRevoked;
+        }
+
+        _roles.Remove(grant);
+
+        return Result.Updated;
     }
 
     private static string Validate(string? value, Error required, Error tooLong, List<Error> errors)

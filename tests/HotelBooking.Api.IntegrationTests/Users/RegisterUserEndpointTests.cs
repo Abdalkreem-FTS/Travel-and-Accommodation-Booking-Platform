@@ -21,7 +21,7 @@ public sealed class RegisterUserEndpointTests(ApiFactory factory) : IntegrationT
 
         user.ShouldNotBeNull();
         user.Email.ShouldBe("abdalkreem@example.com");
-        user.Role.ShouldBe("User");
+        user.Roles.ShouldBe(["User"]);
         response.Headers.Location!.ToString().ShouldBe($"/api/users/{user.Id}");
     }
 
