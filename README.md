@@ -53,6 +53,7 @@ Everything below follows from that.
 | **Logs / Traces / Metrics** | Serilog + OpenTelemetry → Collector → Seq / Jaeger / Prometheus |
 | **Docs** | OpenAPI + Scalar |
 | **Testing** | xunit.v3, Shouldly, NSubstitute, Testcontainers, NetArchTest |
+| **Gateway** | YARP reverse proxy — least-requests, active + passive health checks, rate limiting |
 | **Containerization** | Docker + Docker Compose |
 | **CI/CD** | GitHub Actions |
 
@@ -72,15 +73,18 @@ Everything below follows from that.
 | **Cancellation** | Guest-initiated inside a 48h window; releases the nights immediately |
 | **Rotating refresh tokens** | Hashed, with reuse detection that revokes the whole family |
 | **RFC 9457 errors** | Every non-2xx is a problem document carrying a `traceId` and an `errorCode` |
-| **Rate limiting** | Fixed window, by user when signed in and by IP otherwise |
+| **Rate limiting** | At the gateway, fixed window per client IP; stricter on login and registration |
+| **Horizontal scale** | Three API instances behind a YARP gateway; stop one and traffic moves to the others |
 | **Full telemetry** | One trace id joins the HTTP request, the SQL, the cache and the email |
 
 ---
 
 ## System Architecture
 
-Five projects. Dependencies point inward, and nothing points back out. Two of them are hosts — the
-API serves HTTP, the worker drains the outbox — and they never reference each other.
+Six projects. Dependencies point inward, and nothing points back out. Two of them are hosts — the
+API serves HTTP, the worker drains the outbox — and they never reference each other. The sixth, the
+gateway, sits in front of the API and references none of the others: it forwards bytes and has no
+reason to know a database exists.
 
 ![Dependency direction between the five projects](diagrams/readme-01-layers.svg)
 
@@ -95,7 +99,7 @@ across three places, so every change touches all three. I've done that before. I
 
 ### Runtime shape
 
-![Runtime shape: API, SQL Server, Redis, two outbox workers and telemetry](diagrams/readme-02-runtime.svg)
+![Runtime shape: a YARP gateway in front of three API instances, SQL Server, Redis, two outbox workers and telemetry](diagrams/readme-02-runtime.svg)
 
 <sub>Source: [`readme-02-runtime.excalidraw`](diagrams/readme-02-runtime.excalidraw) — open it at excalidraw.com to edit.</sub>
 
@@ -123,6 +127,26 @@ belongs to `IUnitOfWork`, so **one use case is one transaction**.
 
 No in-memory cache affects correctness and no local disk is on the request path. Kill any instance
 mid-traffic and you lose only its in-flight requests.
+
+### The gateway
+
+Three API instances (`api-1`, `api-2`, `api-3`) sit behind a YARP gateway, which is the only one
+of them with a published port.
+
+| Concern | How |
+| --- | --- |
+| **Balancing** | Least-requests, no session affinity. Checkout holds a transaction and search can miss the cache, so work is uneven and round-robin would keep feeding a busy instance |
+| **Active health** | Probes `/health/ready` every 5 s. An instance that loses SQL Server leaves rotation before a guest reaches it |
+| **Passive health** | An instance whose connections start failing is taken out for 30 s without waiting for the next probe |
+| **Rate limiting** | All of it, per client IP. One gateway sees every request, so the number in config is the real number, not three times it |
+| **Correlation** | The gateway names every request with an `X-Request-Id`, sends it to the API and returns it; one trace from gateway to SQL |
+
+**The API trusts `X-Forwarded-For` from one address.** Compose pins the gateway to `172.30.0.250`,
+and that single address is what the APIs believes.
+
+If `ForwardedHeaders__GatewayAddress` is not set, the API reads no forwarded headers at all. That is
+deliberate: with nothing to check a sender against, ASP.NET Core stops checking and believes every
+caller, so "not configured" has to mean "not forwarded".
 
 ---
 
@@ -426,13 +450,13 @@ echo "JWT_SIGNING_KEY=$(openssl rand -base64 48)" >> .env
 docker compose up -d --build
 ```
 
-That's it. The API applies its own migrations at startup, seeds a demo catalogue (6 cities, 20
-hotels, 80 rooms, 5 deals), and reports healthy. Then two workers (`hotelbooking-worker-1` and
-`-2`) start and begin draining the outbox.
+That's it. `api-1` applies the migrations at startup, seeds a demo catalogue (6 cities, 20 hotels,
+80 rooms, 5 deals), and reports healthy. Then `api-2` and `api-3` start, the gateway starts once all
+three are healthy, and two workers (`hotelbooking-worker-1` and `-2`) begin draining the outbox.
 
 ```bash
-docker compose ps                                        # wait for hotelbooking-api to be healthy
-curl -s http://localhost:8080/health/ready               # Healthy
+docker compose ps                                        # wait for hotelbooking-gateway to be healthy
+curl -s http://localhost:8080/health/ready               # Healthy, answered by one of the three instances
 ```
 
 ### Try It
@@ -454,7 +478,7 @@ curl -s http://localhost:8080/api/cart -H "Authorization: Bearer $TOKEN" | jq
 
 | Service | URL | Notes |
 | --- | --- | --- |
-| **API** | http://localhost:8080/api | All routes are under `/api` |
+| **API (through the gateway)** | http://localhost:8080/api | All routes are under `/api`. The API instances publish no port |
 | **Scalar API reference** | http://localhost:8080/scalar | Development only |
 | **OpenAPI document** | http://localhost:8080/openapi/v1.json | Development only |
 | **Mailpit** | http://localhost:8025 | Confirmation emails land here |
@@ -473,26 +497,12 @@ curl -s http://localhost:8080/api/cart -H "Authorization: Bearer $TOKEN" | jq
 | `ConnectionStrings__Database` | SQL Server connection | Set by Compose |
 | `ConnectionStrings__Redis` | Redis connection | `redis:6379` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Where telemetry goes | `http://otel-collector:4317` |
+| `ForwardedHeaders__GatewayAddress` | The one address whose `X-Forwarded-For` the API believes | `172.30.0.250` (the gateway) |
+| `RateLimits__Auth__Permit` / `RateLimits__Global__Permit` | Gateway limits per client IP | `10` (per 15 min) / `300` (per min) |
 | `Email__Smtp__Host` | SMTP host (worker only; the API sends no email) | `mailpit` |
 
 Secrets are never in `appsettings.json` — the committed file has empty placeholders so a missing
 secret **fails loudly at startup** instead of quietly falling back to something insecure.
-
-### Running Without Docker
-
-```bash
-docker compose up -d sqlserver redis mailpit     # dependencies only
-
-cd src/HotelBooking.Api
-dotnet user-secrets set "ConnectionStrings:Database" "Server=localhost,1433;Database=HotelBooking;User Id=sa;Password=<yours>;TrustServerCertificate=True"
-dotnet user-secrets set "Authentication:Jwt:SigningKey" "$(openssl rand -base64 48)"
-
-dotnet run                                        # migrates and seeds on start
-
-cd src/HotelBooking.Workers
-dotnet run
-```
-
 ---
 
 ## API Reference
@@ -566,7 +576,8 @@ Every non-2xx is an RFC 9457 problem document, produced by exactly one mapping f
 | `Booking.CancellationWindowClosed` | Past the 48h window | 409 |
 | `Concurrency.VersionRequired` | Admin edit sent without `If-Match` | 428 |
 | `Auth.*` | Credentials, tokens, sessions | 401 |
-| `Request.TooManyRequests` | Rate limited (`Retry-After` set) | 429 |
+| `Request.TooManyRequests` | Rate limited by the gateway (`Retry-After` set) | 429 |
+| `Gateway.UpstreamUnavailable` | No API instance could serve the request | 502 / 503 / 504 |
 
 ---
 
@@ -581,14 +592,15 @@ Every non-2xx is an RFC 9457 problem document, produced by exactly one mapping f
 | **RBAC** | Policies (`AdminOnly`, `AuthenticatedUser`) |
 | **Ownership** | "A guest reads only their own bookings" is checked in the service, not the endpoint |
 | **Deny by default** | Fallback policy requires auth; public routes opt out one by one |
-| **Rate limits** | Auth: 10 / 15 min. Global: 300 / min. By user when signed in, by IP otherwise |
+| **Rate limits** | At the gateway, per client IP. Auth (login + registration together): 10 / 15 min. Global: 300 / min |
+| **Forwarded headers** | Believed only from the gateway's fixed address |
 | **Request timeout** | 30 seconds, everywhere |
 
 **The denylist keys the session, not the token.** Denylisting each `jti` means a logout only kills
 the token you happened to be holding. Keying the session kills every token minted from that login
 in one write.
 
-Rate limits are counted **per instance**.
+Rate limits are counted **once, at the gateway**, so three API instances don't triple them.
 
 ---
 
@@ -628,7 +640,7 @@ Infrastructure and are registered only by `AddWorkers`, which only `HotelBooking
 The app emits **OTLP and nothing else** — no Prometheus client library, no Jaeger SDK, no Seq sink.
 Which backends sit behind the collector is a Compose concern, not a code one.
 
-![OTLP from the API and the workers through the collector to Jaeger, Seq and Prometheus](diagrams/readme-05-observability.svg)
+![OTLP from the gateway, the API instances and the workers through the collector to Jaeger, Seq and Prometheus](diagrams/readme-05-observability.svg)
 
 <sub>Source: [`readme-05-observability.excalidraw`](diagrams/readme-05-observability.excalidraw) — open it at excalidraw.com to edit.</sub>
 
@@ -662,14 +674,17 @@ Business metrics, not just RED:
 | `cache.hits` / `cache.misses` / `cache.unavailable` | Tagged by key prefix |
 | `auth.refresh.reused` | Token replay detected |
 | `deals.unpriceable` | Bad catalogue data reaching the home page |
-| `http.ratelimit.rejected` | Who's being throttled, by endpoint |
+| `http.ratelimit.rejected` | Who's being throttled, by gateway route |
 
 The two in bold are the ones I'd page on. They mean a guest has been wronged in a way they can
 see and I can't.
 
 ### Logs & Health
 
-Structured JSON via Serilog, correlation id on every line, with `ClientIp` pushed onto the context.
+Structured JSON via Serilog, with the trace id on every line. The gateway also names every request
+with an `X-Request-Id`, forwards it and returns it. Both hops log it as `CorrelationId`, next to the
+real `ClientIp`. The gateway's request log also records which instance
+(`Upstream`) served the request.
 Tokens, passwords and full email addresses are never logged.
 
 | Probe | Checks |
@@ -683,14 +698,14 @@ Health endpoints are excluded from tracing — a probe every 10 seconds would dr
 
 ## Testing
 
-66 tests across four layers. Each layer proves something the others can't.
+73 tests across four suites. Each one proves something the others can't.
 
 | Suite | Tests | Proves |
 | --- | --- | --- |
 | **Domain unit** | 23 | Invariants and value objects. No mocks — pure functions in, `Result` out |
 | **Application unit** | 14 | Orchestration: success, not-found, forbidden, conflict, validation |
 | **Integration** | 13 | Real SQL Server + Redis via Testcontainers, over the real HTTP route |
-| **Architecture** | 16 | The dependency rule, and that Api and Workers never reference each other |
+| **Architecture** | 23 | The dependency rule; Api and Workers never reference each other; the gateway references nothing; the API has no rate limiter |
 
 The test I care about most fires **50 concurrent checkouts for the same room on the same nights**
 and asserts exactly one 201, forty-nine 409s, no 5xx, that every loser got `Booking.RoomUnavailable`
@@ -716,16 +731,16 @@ both SQL and Redis.
 | **Build** | Release, `-warnaserror` — zero warnings or it fails |
 | **Unit tests** | Domain, Application, Architecture |
 | **Integration tests** | Testcontainers against the runner's Docker daemon — real SQL Server and Redis |
-| **Images** | Builds the API and worker images to prove both Dockerfiles still work |
+| **Images** | Builds the API, worker and gateway images to prove every Dockerfile still works |
 
 ### CD — after CI goes green on `main`
 
-Builds both images and pushes them to **GitHub Container Registry**, tagged `latest` and the commit
-SHA:
+Builds all three images and pushes them to **GitHub Container Registry**, tagged `latest` and the
+commit SHA:
 
 ```
-ghcr.io/<owner>/hotelbooking-api:latest      ghcr.io/<owner>/hotelbooking-worker:latest
-ghcr.io/<owner>/hotelbooking-api:<sha>       ghcr.io/<owner>/hotelbooking-worker:<sha>
+ghcr.io/<owner>/hotelbooking-api:latest      ghcr.io/<owner>/hotelbooking-worker:latest      ghcr.io/<owner>/hotelbooking-gateway:latest
+ghcr.io/<owner>/hotelbooking-api:<sha>       ghcr.io/<owner>/hotelbooking-worker:<sha>       ghcr.io/<owner>/hotelbooking-gateway:<sha>
 ```
 
 ---
@@ -758,11 +773,18 @@ src/
 ├── HotelBooking.Api/              # HTTP only; composes, runs no background service
 │   ├── Endpoints/                 # one class per use case, scanned and mapped
 │   ├── Errors/                    # the single Error → ProblemDetails mapping
-│   ├── Authentication/  Authorization/  RateLimiting/  Observability/
+│   ├── Authentication/  Authorization/  Networking/  Observability/
 │   ├── Dockerfile
 │   └── Program.cs
 │
-└── HotelBooking.Workers/          # generic host that drains the outbox; never references Api
+├── HotelBooking.Workers/          # generic host that drains the outbox; never references Api
+│   ├── Dockerfile
+│   └── Program.cs
+│
+└── HotelBooking.Gateway/          # YARP in front of api-1..3; references no other project
+    ├── RateLimiting/              # the only rate limiter in the system
+    ├── Forwarding/  Problems/  Observability/
+    ├── appsettings.json           # routes, cluster, balancing, health checks
     ├── Dockerfile
     └── Program.cs
 
@@ -774,7 +796,7 @@ tests/
 
 .github/workflows/    ci.yml, cd.yml
 observability/        collector and Prometheus config
-docker-compose.yml    API + 2 workers + SQL Server + Redis + Mailpit + the telemetry pipeline
+docker-compose.yml    gateway + 3 API instances + 2 workers + SQL Server + Redis + Mailpit + the telemetry pipeline
 ```
 
 ---
