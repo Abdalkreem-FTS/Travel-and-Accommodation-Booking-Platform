@@ -190,6 +190,8 @@ public sealed class AuthService(
         var revoked = await refreshTokenRepository
             .RevokeFamilyAsync(token.FamilyId, dateTimeProvider.UtcNow, cancellationToken);
 
+        await DenyTheSessionAsync(token.FamilyId, revoked, cancellationToken);
+
         Telemetry.RefreshTokensReused.Add(1, new KeyValuePair<string, object?>("detection", detection));
 
         logger.LogWarning(
@@ -201,6 +203,30 @@ public sealed class AuthService(
             token.FamilyId);
 
         return AuthErrors.InvalidRefreshToken;
+    }
+
+    private async Task DenyTheSessionAsync(
+        Guid sessionId,
+        int revoked,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await tokenDenylist.DenySessionAsync(
+                sessionId, options.SessionRevocationWindow, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            Telemetry.DenylistUnavailable.Add(1, new KeyValuePair<string, object?>("operation", "deny"));
+
+            logger.LogError(
+                exception,
+                "Reuse detection revoked {RevokedCount} token(s) in family {SessionId} but could not "
+                + "deny its access tokens; they stay valid for up to {Window}",
+                revoked,
+                sessionId,
+                options.SessionRevocationWindow);
+        }
     }
 
     private SessionDto IssueSession(User user, Guid sessionId, GeneratedRefreshToken refreshToken)

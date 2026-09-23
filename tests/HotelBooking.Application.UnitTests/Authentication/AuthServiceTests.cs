@@ -71,6 +71,41 @@ public sealed class AuthServiceTests
     }
 
     [Fact]
+    public async Task RefreshAsync_WhenAReplayedTokenKillsTheFamily_AlsoDeniesTheAccessTokensItIssued()
+    {
+        var token = GivenAnActiveRefreshToken();
+
+        token.Revoke(Now);
+
+        var result = await _service.RefreshAsync(
+            new RefreshSessionRequest("raw"), TestContext.Current.CancellationToken);
+
+        result.TopError.Code.ShouldBe("Auth.InvalidRefreshToken");
+
+        await _denylist.Received(1).DenySessionAsync(
+            token.FamilyId, Options.SessionRevocationWindow, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RefreshAsync_WhenTheDenylistIsDownDuringReuse_StillRefusesAndStillKillsTheFamily()
+    {
+        var token = GivenAnActiveRefreshToken();
+
+        token.Revoke(Now);
+
+        _denylist.DenySessionAsync(Arg.Any<Guid>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
+            .Returns(_ => throw new InvalidOperationException("Redis is unreachable."));
+
+        var result = await _service.RefreshAsync(
+            new RefreshSessionRequest("raw"), TestContext.Current.CancellationToken);
+
+        result.TopError.Code.ShouldBe("Auth.InvalidRefreshToken");
+
+        await _refreshTokens.Received(1)
+            .RevokeFamilyAsync(token.FamilyId, Now, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task LoginAsync_ForAnUnknownEmail_StillVerifiesAPasswordSoTheTimingDoesNotLeak()
     {
         _users.GetByEmailAsync(Arg.Any<Email>(), Arg.Any<CancellationToken>()).Returns((User?)null);
