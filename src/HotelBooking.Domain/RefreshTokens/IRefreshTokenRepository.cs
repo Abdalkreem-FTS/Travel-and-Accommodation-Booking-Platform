@@ -10,4 +10,9 @@ public interface IRefreshTokenRepository
         Guid familyId,
         DateTimeOffset revokedAtUtc,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Guid>> RevokeAllForUserAsync(
+        Guid userId,
+        DateTimeOffset revokedAtUtc,
+        CancellationToken cancellationToken = default);
 }

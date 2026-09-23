@@ -23,4 +23,24 @@ internal sealed class RefreshTokenRepository(HotelBookingDbContext context) : IR
             .ExecuteUpdateAsync(
                 setters => setters.SetProperty(token => token.RevokedAtUtc, revokedAtUtc),
                 cancellationToken);
+
+    public async Task<IReadOnlyList<Guid>> RevokeAllForUserAsync(
+        Guid userId,
+        DateTimeOffset revokedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        var active = context.RefreshTokens.Where(
+            token => token.UserId == userId && token.RevokedAtUtc == null);
+
+        var sessionIds = await active
+            .Select(token => token.FamilyId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        await active.ExecuteUpdateAsync(
+            setters => setters.SetProperty(token => token.RevokedAtUtc, revokedAtUtc),
+            cancellationToken);
+
+        return sessionIds;
+    }
 }

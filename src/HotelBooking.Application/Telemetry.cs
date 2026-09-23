@@ -28,6 +28,12 @@ public static class Telemetry
     public static readonly Counter<long> SessionsEnded =
         Meter.CreateCounter<long>("auth.sessions.ended", description: "Sessions ended by an explicit logout.");
 
+    public static readonly Counter<long> UserRolesGranted =
+        Meter.CreateCounter<long>("users.roles.granted", description: "Roles granted to a user by an administrator.");
+
+    public static readonly Counter<long> UserRolesRevoked =
+        Meter.CreateCounter<long>("users.roles.revoked", description: "Roles revoked from a user by an administrator.");
+
     public static readonly Counter<long> BookingsCreated =
         Meter.CreateCounter<long>("bookings.created", description: "Bookings confirmed at checkout.");
 

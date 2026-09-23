@@ -32,6 +32,11 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
             .HasDatabaseName("IX_RefreshTokens_FamilyId")
             .HasFilter("[RevokedAtUtc] IS NULL");
 
+        builder.HasIndex(token => token.UserId)
+            .HasDatabaseName("IX_RefreshTokens_UserId")
+            .HasFilter("[RevokedAtUtc] IS NULL")
+            .IncludeProperties(token => token.FamilyId);
+
         builder.Property<byte[]>(RowVersionProperty.Name).IsRowVersion().IsRequired();
 
         builder.Property(token => token.FamilyId).IsRequired();
