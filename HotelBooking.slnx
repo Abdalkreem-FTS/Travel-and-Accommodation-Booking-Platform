@@ -3,6 +3,7 @@
     <Project Path="src/HotelBooking.Api/HotelBooking.Api.csproj" />
     <Project Path="src/HotelBooking.Application/HotelBooking.Application.csproj" />
     <Project Path="src/HotelBooking.Domain/HotelBooking.Domain.csproj" />
+    <Project Path="src/HotelBooking.Gateway/HotelBooking.Gateway.csproj" />
     <Project Path="src/HotelBooking.Infrastructure/HotelBooking.Infrastructure.csproj" />
     <Project Path="src/HotelBooking.Workers/HotelBooking.Workers.csproj" />
   </Folder>
