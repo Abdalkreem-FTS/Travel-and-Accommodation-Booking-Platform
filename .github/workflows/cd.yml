@@ -23,6 +23,8 @@ jobs:
             dockerfile: src/HotelBooking.Api/Dockerfile
           - image: hotelbooking-worker
             dockerfile: src/HotelBooking.Workers/Dockerfile
+          - image: hotelbooking-gateway
+            dockerfile: src/HotelBooking.Gateway/Dockerfile
 
     permissions:
       contents: read
