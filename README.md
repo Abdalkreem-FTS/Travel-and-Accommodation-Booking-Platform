@@ -717,6 +717,13 @@ session, logout taking effect immediately (and being refused when the denylist i
 twenty parallel registrations with one email creating exactly one user, and a search traced through
 both SQL and Redis.
 
+### Load tests
+
+Four k6 scenarios run against the full Docker stack, through the gateway and across all three API
+instances. The contention run repeats the 50-caller race over a real network. The browse,
+checkout and flood runs measure latency and throughput (flood sends 100k queries). Each one fails
+the run when a threshold is crossed. How to run them: [`load/README.md`](load/README.md).
+
 ---
 
 ## CI/CD
@@ -794,6 +801,7 @@ tests/
 └── HotelBooking.Architecture.Tests/       # NetArchTest
 
 .github/workflows/    ci.yml, cd.yml
+load/                 k6 load tests: contention, browse, checkout, flood
 observability/        collector and Prometheus config
 docker-compose.yml    gateway + 3 API instances + 2 workers + SQL Server + Redis + Mailpit + the telemetry pipeline
 ```
