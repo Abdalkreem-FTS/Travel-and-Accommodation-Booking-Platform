@@ -139,7 +139,7 @@ of them with a published port.
 | **Active health** | Probes `/health/ready` every 5 s. An instance that loses SQL Server leaves rotation before a guest reaches it |
 | **Passive health** | An instance whose connections start failing is taken out for 30 s without waiting for the next probe |
 | **Rate limiting** | All of it, per client IP. One gateway sees every request, so the number in config is the real number, not three times it |
-| **Correlation** | The gateway names every request with an `X-Request-Id`, sends it to the API and returns it; one trace from gateway to SQL |
+| **Correlation** | Every response returns the request's trace id as `X-Request-Id`; one id from gateway to SQL to the worker's email |
 
 **The API trusts `X-Forwarded-For` from one address.** Compose pins the gateway to `172.30.0.250`,
 and that single address is what the APIs believes.
@@ -563,7 +563,7 @@ Every non-2xx is an RFC 9457 problem document, produced by exactly one mapping f
   "detail": "One or more of the nights requested has already been booked.",
   "instance": "/api/bookings",
   "errorCode": "Booking.RoomUnavailable",
-  "traceId": "00-6b85bea42af8c1c3919d28491e56cca7-f4e680198ecdb845-01"
+  "traceId": "6b85bea42af8c1c3919d28491e56cca7"
 }
 ```
 
@@ -646,7 +646,7 @@ Which backends sit behind the collector is a Compose concern, not a code one.
 
 ### One Trace, Three Tools
 
-Make a request, take the `@tr` field from the log line, and the same id finds it everywhere:
+Make a request, take its `X-Request-Id` (or the `traceId` of an error), and the same id finds it everywhere:
 
 - **Jaeger** → `http://localhost:16686/trace/<traceId>`
 - **Seq** → filter `@TraceId = '<traceId>'`
@@ -681,9 +681,8 @@ see and I can't.
 
 ### Logs & Health
 
-Structured JSON via Serilog, with the trace id on every line. The gateway also names every request
-with an `X-Request-Id`, forwards it and returns it. Both hops log it as `CorrelationId`, next to the
-real `ClientIp`. The gateway's request log also records which instance
+Structured JSON via Serilog, with the trace id on every line next to the real `ClientIp`. There is
+no second request id: the trace id is it, returned on every response as `X-Request-Id`. The gateway's request log also records which instance
 (`Upstream`) served the request.
 Tokens, passwords and full email addresses are never logged.
 

@@ -1,4 +1,7 @@
 using System.Diagnostics;
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 
 using HotelBooking.Api.IntegrationTests.Infrastructure;
 
@@ -30,6 +33,25 @@ public sealed class RequestTraceTests(ApiFactory factory) : IntegrationTestBase(
 
         sql.ShouldAllBe(span => span.Kind == ActivityKind.Client);
         redis.ShouldAllBe(span => span.Kind == ActivityKind.Client);
+    }
+
+    [Fact]
+    public async Task Get_WithTheGatewaysTraceparent_AnswersUnderThatTrace()
+    {
+        const string gatewayTraceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/hotels/{Guid.NewGuid()}");
+
+        request.Headers.Add("traceparent", $"00-{gatewayTraceId}-00f067aa0ba902b7-01");
+
+        using var response = await Client.SendAsync(request, Token);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(Token);
+
+        response.Headers.GetValues("X-Request-Id").Single().ShouldBe(gatewayTraceId);
+        problem.GetProperty("traceId").GetString().ShouldBe(gatewayTraceId);
     }
 
     private static bool IsComplete(IReadOnlyList<Activity> recorded)

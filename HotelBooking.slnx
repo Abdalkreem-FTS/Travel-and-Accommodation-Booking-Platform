@@ -12,5 +12,6 @@
     <Project Path="tests/HotelBooking.Application.UnitTests/HotelBooking.Application.UnitTests.csproj" />
     <Project Path="tests/HotelBooking.Architecture.Tests/HotelBooking.Architecture.Tests.csproj" />
     <Project Path="tests/HotelBooking.Domain.UnitTests/HotelBooking.Domain.UnitTests.csproj" />
+    <Project Path="tests/HotelBooking.Gateway.IntegrationTests/HotelBooking.Gateway.IntegrationTests.csproj" />
   </Folder>
 </Solution>

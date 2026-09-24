@@ -18,7 +18,7 @@ public static class GatewayProblems
 
         problem.Type = null;
         problem.Instance ??= request.Path.HasValue ? request.Path.Value : "/";
-        problem.Extensions["traceId"] = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
+        problem.Extensions["traceId"] = Activity.Current?.TraceId.ToHexString() ?? context.HttpContext.TraceIdentifier;
 
         if (problem.Extensions.ContainsKey("errorCode"))
         {
