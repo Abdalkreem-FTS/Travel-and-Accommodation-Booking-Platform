@@ -44,10 +44,10 @@
     {
       "id": "el2",
       "type": "text",
-      "x": 57.0,
+      "x": 61.38671875,
       "y": 62.5,
-      "width": 66.0,
-      "height": 25.0,
+      "width": 57.2265625,
+      "height": 25,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -118,10 +118,10 @@
     {
       "id": "el4",
       "type": "text",
-      "x": 34.99999999999999,
+      "x": 47.763671875,
       "y": 212.5,
-      "width": 110.00000000000001,
-      "height": 25.0,
+      "width": 84.47265625,
+      "height": 25,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -212,10 +212,10 @@
     {
       "id": "el6",
       "type": "text",
-      "x": 363.0,
+      "x": 380.439453125,
       "y": 137.5,
-      "width": 154.0,
-      "height": 25.0,
+      "width": 119.12109375,
+      "height": 25,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -286,10 +286,10 @@
     {
       "id": "el8",
       "type": "text",
-      "x": 767.0,
-      "y": 10.0,
-      "width": 66.0,
-      "height": 50.0,
+      "x": 774.462890625,
+      "y": 10,
+      "width": 51.07421875,
+      "height": 50,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -360,10 +360,10 @@
     {
       "id": "el10",
       "type": "text",
-      "x": 778.0,
-      "y": 125.0,
-      "width": 44.0,
-      "height": 50.0,
+      "x": 783.330078125,
+      "y": 125,
+      "width": 33.33984375,
+      "height": 50,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -434,10 +434,10 @@
     {
       "id": "el12",
       "type": "text",
-      "x": 745.0,
-      "y": 240.0,
-      "width": 110.00000000000001,
-      "height": 50.0,
+      "x": 743.9111328125,
+      "y": 240,
+      "width": 112.177734375,
+      "height": 50,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -457,8 +457,8 @@
       "updated": 1,
       "link": null,
       "locked": false,
-      "text": "Prometheus\nmetrics",
-      "originalText": "Prometheus\nmetrics",
+      "text": "Prometheus\nmetrics, alerts",
+      "originalText": "Prometheus\nmetrics, alerts",
       "fontSize": 20,
       "fontFamily": 1,
       "textAlign": "center",
@@ -470,9 +470,9 @@
     {
       "id": "el13",
       "type": "arrow",
-      "x": 186.0,
+      "x": 186,
       "y": 95.57142857142857,
-      "width": 138.0,
+      "width": 138,
       "height": 29.57142857142857,
       "angle": 0,
       "strokeColor": "#1e1e1e",
@@ -502,11 +502,11 @@
       "locked": false,
       "points": [
         [
-          0.0,
-          0.0
+          0,
+          0
         ],
         [
-          138.0,
+          138,
           29.57142857142857
         ]
       ],
@@ -528,10 +528,10 @@
     {
       "id": "el14",
       "type": "text",
-      "x": 237.4,
+      "x": 235,
       "y": 100.35714285714286,
-      "width": 35.2,
-      "height": 20.0,
+      "width": 40,
+      "height": 20,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -564,9 +564,9 @@
     {
       "id": "el15",
       "type": "arrow",
-      "x": 186.0,
+      "x": 186,
       "y": 204.42857142857142,
-      "width": 138.0,
+      "width": 138,
       "height": 29.571428571428555,
       "angle": 0,
       "strokeColor": "#1e1e1e",
@@ -596,11 +596,11 @@
       "locked": false,
       "points": [
         [
-          0.0,
-          0.0
+          0,
+          0
         ],
         [
-          138.0,
+          138,
           -29.571428571428555
         ]
       ],
@@ -622,10 +622,10 @@
     {
       "id": "el16",
       "type": "text",
-      "x": 237.4,
+      "x": 235,
       "y": 179.64285714285714,
-      "width": 35.2,
-      "height": 20.0,
+      "width": 40,
+      "height": 20,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -658,9 +658,9 @@
     {
       "id": "el17",
       "type": "arrow",
-      "x": 556.0,
+      "x": 556,
       "y": 112.94444444444444,
-      "width": 138.0,
+      "width": 138,
       "height": 44.08333333333333,
       "angle": 0,
       "strokeColor": "#1e1e1e",
@@ -685,11 +685,11 @@
       "locked": false,
       "points": [
         [
-          0.0,
-          0.0
+          0,
+          0
         ],
         [
-          138.0,
+          138,
           -44.08333333333333
         ]
       ],
@@ -711,10 +711,10 @@
     {
       "id": "el18",
       "type": "arrow",
-      "x": 556.0,
-      "y": 150.0,
-      "width": 138.0,
-      "height": 0.0,
+      "x": 556,
+      "y": 150,
+      "width": 138,
+      "height": 0,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -738,12 +738,12 @@
       "locked": false,
       "points": [
         [
-          0.0,
-          0.0
+          0,
+          0
         ],
         [
-          138.0,
-          0.0
+          138,
+          0
         ]
       ],
       "lastCommittedPoint": null,
@@ -764,9 +764,9 @@
     {
       "id": "el19",
       "type": "arrow",
-      "x": 694.0,
+      "x": 694,
       "y": 231.13888888888889,
-      "width": 138.0,
+      "width": 138,
       "height": 44.08333333333334,
       "angle": 0,
       "strokeColor": "#1e1e1e",
@@ -791,11 +791,11 @@
       "locked": false,
       "points": [
         [
-          0.0,
-          0.0
+          0,
+          0
         ],
         [
-          -138.0,
+          -138,
           -44.08333333333334
         ]
       ],
@@ -855,10 +855,10 @@
     {
       "id": "gw2",
       "type": "text",
-      "x": 51.5,
+      "x": 54.462890625,
       "y": -87.5,
-      "width": 77.0,
-      "height": 25.0,
+      "width": 71.07421875,
+      "height": 25,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -948,8 +948,8 @@
       "type": "text",
       "x": 250,
       "y": -88,
-      "width": 35.2,
-      "height": 20.0,
+      "width": 40,
+      "height": 20,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
