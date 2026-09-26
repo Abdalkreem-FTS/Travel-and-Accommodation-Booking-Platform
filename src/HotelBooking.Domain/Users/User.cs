@@ -77,8 +77,7 @@ public sealed class User : AggregateRoot<Guid>
 
         user._roles.Add(UserRoleGrant.Of(UserRole.User, nowUtc));
 
-        // user.Raise(new UserRegistered(eventId, user.Id, email.Value, user.FirstName, nowUtc));
-        _ = eventId;
+        user.Raise(new UserRegistered(eventId, user.Id, email.Value, user.FirstName, nowUtc));
 
         return user;
     }

@@ -4,6 +4,10 @@ using System.Text.Json;
 
 using HotelBooking.Api.IntegrationTests.Infrastructure;
 using HotelBooking.Application.Users.Dtos;
+using HotelBooking.Infrastructure.Persistence;
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HotelBooking.Api.IntegrationTests.Users;
 
@@ -36,6 +40,13 @@ public sealed class RegisterUserEndpointTests(ApiFactory factory) : IntegrationT
         responses.ShouldNotContain(response => (int)response.StatusCode >= 500);
 
         (await LoginAsync("race@example.com")).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+
+        (await scope.ServiceProvider.GetRequiredService<HotelBookingDbContext>().Database
+                .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM OutboxMessages WHERE Type LIKE '%UserRegistered%'")
+                .SingleAsync(TestContext.Current.CancellationToken))
+            .ShouldBe(1, "the nineteen refused sign-ups rolled back, welcome email and all");
     }
 
     internal sealed record ProblemBody(
