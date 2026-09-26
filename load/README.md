@@ -5,7 +5,7 @@ Each one **passes or fails**: k6 exits non-zero when a threshold is crossed.
 
 | Scenario | What it does | Passes when |
 | --- | --- | --- |
-| `contention.js` | 50 users book **the same room, same nights**, at the same instant | exactly one `201`, 49 × `409 Booking.RoomUnavailable`, no `5xx` |
+| `contention.js` | 50 guests book **the same room, same nights**, at the same instant | exactly one `201`, 49 × `409 Booking.RoomUnavailable`, no `5xx` |
 | `browse.js` | 50 users browse cities → search → hotel → rooms for two minutes | no failed requests, p95 under each route's threshold |
 | `checkout.js` | 10 checkouts per second for two minutes, no two touching the same nights | every checkout succeeds; even a `409` fails it |
 | `flood.js` | 100,000 room-availability queries: 1,000 a second for 100 seconds | no failed requests, p99 under 200 ms, k6 kept up the full rate |

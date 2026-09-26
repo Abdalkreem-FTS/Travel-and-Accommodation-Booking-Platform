@@ -2,9 +2,11 @@ import { check } from 'k6';
 import exec from 'k6/execution';
 import http from 'k6/http';
 
-import { TREND_STATS, book, discoverRooms, firstNightOfRun, guestToken, isoDate } from '../lib/api.js';
+import { TREND_STATS, book, cancel, discoverRooms, firstNightOfRun, guestTokens, isoDate } from '../lib/api.js';
 
 const EXPECTED = http.expectedStatuses(201);
+
+const MAX_VUS = 60;
 
 export const options = {
   summaryTrendStats: TREND_STATS,
@@ -15,7 +17,7 @@ export const options = {
       timeUnit: '1s',
       duration: '2m',
       preAllocatedVUs: 20,
-      maxVUs: 60
+      maxVUs: MAX_VUS
     }
   },
   thresholds: {
@@ -27,7 +29,7 @@ export const options = {
 
 export function setup() {
   return {
-    token: guestToken(`checkout-${Date.now()}`),
+    tokens: guestTokens(`checkout-${Date.now()}`, MAX_VUS),
     rooms: discoverRooms(),
     firstNight: firstNightOfRun()
   };
@@ -39,7 +41,9 @@ export default function (data) {
   const cycle = Math.floor(iteration / data.rooms.length);
   const arrival = data.firstNight + (cycle * 4);
 
-  const booked = book(data.token, room, isoDate(arrival), isoDate(arrival + 3), EXPECTED);
+  const token = data.tokens[exec.vu.idInTest - 1];
+
+  const booked = book(token, room, isoDate(arrival), isoDate(arrival + 3), EXPECTED);
 
   check(booked, {
     'booked 201': (response) => response.status === 201
@@ -47,5 +51,13 @@ export default function (data) {
 
   if (booked.status !== 201) {
     console.error(`checkout: expected 201, got ${booked.status} ${booked.body}`);
+
+    return;
   }
+
+  const cancelled = cancel(token, booked.json('id'));
+
+  check(cancelled, {
+    'cancelled 201': (response) => response.status === 201
+  });
 }

@@ -68,6 +68,10 @@ export function guestToken(runId) {
   return session.json('accessToken');
 }
 
+export function guestTokens(runId, count) {
+  return Array.from({ length: count }, (_, guest) => guestToken(`${runId}-${guest}`));
+}
+
 export function discoverCities() {
   const cities = http.get(url('/cities?page=1&pageSize=50'));
 
@@ -125,6 +129,13 @@ export function book(token, roomId, checkIn, checkOut, expected) {
     },
     tags: { name: 'checkout' },
     responseCallback: expected
+  });
+}
+
+export function cancel(token, bookingId) {
+  return http.post(url(`/bookings/${bookingId}/cancellation`), null, {
+    headers: { Authorization: `Bearer ${token}` },
+    tags: { name: 'cancellation' }
   });
 }
 

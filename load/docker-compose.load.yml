@@ -1,4 +1,11 @@
 services:
+  api-1: &fake-payments
+    environment:
+      Payments__Provider: Fake
+  api-2: *fake-payments
+  api-3: *fake-payments
+  worker: *fake-payments
+
   gateway:
     environment:
       RateLimits__Global__Permit: "1000000"

@@ -1,8 +1,9 @@
 import { check, sleep } from 'k6';
+import exec from 'k6/execution';
 import http from 'k6/http';
 import { Counter } from 'k6/metrics';
 
-import { TREND_STATS, book, discoverRooms, firstNightOfRun, guestToken, isoDate } from '../lib/api.js';
+import { TREND_STATS, book, discoverRooms, firstNightOfRun, guestTokens, isoDate } from '../lib/api.js';
 
 const EXPECTED = http.expectedStatuses(201, 409);
 
@@ -35,7 +36,7 @@ export function setup() {
   const firstNight = firstNightOfRun();
 
   return {
-    token: guestToken(`contention-${Date.now()}`),
+    tokens: guestTokens(`contention-${Date.now()}`, CALLERS),
     room: discoverRooms()[0],
     checkIn: isoDate(firstNight),
     checkOut: isoDate(firstNight + 3),
@@ -50,7 +51,7 @@ export default function (data) {
     sleep(wait);
   }
 
-  const booked = book(data.token, data.room, data.checkIn, data.checkOut, EXPECTED);
+  const booked = book(data.tokens[exec.vu.idInTest - 1], data.room, data.checkIn, data.checkOut, EXPECTED);
 
   if (booked.status === 201) {
     sold.add(1);
