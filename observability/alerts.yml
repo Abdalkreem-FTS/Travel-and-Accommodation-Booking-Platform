@@ -1,0 +1,42 @@
+groups:
+  - name: payments
+    rules:
+      - alert: RefundFailed
+        expr: >-
+          sum(increase(payments_refunds_total{status="failed"}[15m])) > 0 or sum(payments_refunds_total{status="failed"} unless payments_refunds_total{status="failed"} offset 15m) > 0
+        labels: { severity: page }
+        annotations:
+          summary: The payment provider refused a refund
+          description: >-
+            A guest is owed money the provider would not return. Find the refund in the logs
+            ("refused refund") and return it by hand.
+
+      - alert: MoneyForNoBooking
+        expr: >-
+          sum(increase(payments_events_total{outcome="unreconciled"}[15m])) > 0 or sum(payments_events_total{outcome="unreconciled"} unless payments_events_total{outcome="unreconciled"} offset 15m) > 0
+        labels: { severity: page }
+        annotations:
+          summary: Money was taken that no booking holds and that could not be refunded automatically
+          description: >-
+            A completed checkout arrived for a payment in a state the system could not reconcile
+            (for example, the wrong amount). The log line names the provider payment to refund.
+
+      - alert: PaymentEventsFailing
+        expr: >-
+          sum(increase(payments_events_total{outcome="failed"}[15m])) > 5 or sum(payments_events_total{outcome="failed"} unless payments_events_total{outcome="failed"} offset 15m) > 5
+        labels: { severity: warn }
+        annotations:
+          summary: Payment events keep failing to apply
+          description: >-
+            The provider will redeliver them, but a steady stream means bookings are waiting to be
+            confirmed. Usually the database, or a conflict that keeps repeating.
+
+      - alert: OutboxMessagesAbandoned
+        expr: >-
+          sum(increase(outbox_abandoned_total[15m])) > 0 or sum(outbox_abandoned_total unless outbox_abandoned_total offset 15m) > 0
+        labels: { severity: warn }
+        annotations:
+          summary: An outbox message ran out of attempts
+          description: >-
+            An email was not sent (confirmation, cancellation or welcome). Refunds do not go through
+            the outbox: the unfinished payments worker retries them until the provider answers.
