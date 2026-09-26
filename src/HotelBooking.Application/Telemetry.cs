@@ -35,7 +35,7 @@ public static class Telemetry
         Meter.CreateCounter<long>("users.roles.revoked", description: "Roles revoked from a user by an administrator.");
 
     public static readonly Counter<long> BookingsCreated =
-        Meter.CreateCounter<long>("bookings.created", description: "Bookings confirmed at checkout.");
+        Meter.CreateCounter<long>("bookings.created", description: "Bookings reserved at checkout, waiting for payment.");
 
     public static readonly Counter<long> BookingConflicts =
         Meter.CreateCounter<long>(
@@ -55,29 +55,39 @@ public static class Telemetry
             "bookings.cancelled",
             description: "Bookings cancelled by the guest, releasing their room-nights.");
 
-    public static readonly Counter<long> BookingsVoided =
+    public static readonly Counter<long> PaymentsStarted =
         Meter.CreateCounter<long>(
-            "bookings.voided",
-            description: "Committed bookings undone because their payment could not be captured.");
+            "payments.started",
+            description: "Checkouts handed to the guest: nights held, a hosted payment page open.");
 
-    public static readonly Counter<long> BookingVoidsFailed =
+    public static readonly Counter<long> PaymentsExpired =
         Meter.CreateCounter<long>(
-            "bookings.void_failed",
+            "payments.expired",
+            description: "Payments that ended without money, releasing their nights, tagged by reason.");
+
+    public static readonly Counter<long> PaymentsSucceeded =
+        Meter.CreateCounter<long>(
+            "payments.succeeded", description: "Payments the provider confirmed, confirming their booking.");
+
+    public static readonly Histogram<double> PaymentTimeToPay =
+        Meter.CreateHistogram<double>(
+            "payments.time_to_pay",
+            unit: "s",
+            description: "From the checkout being handed to the guest to the provider confirming the money.");
+
+    public static readonly Counter<long> PaymentEvents =
+        Meter.CreateCounter<long>(
+            "payments.events",
             description:
-            "Compensations that could not undo a booking after its payment failed. Any value "
-            + "above zero is rooms held and money held for a guest with no booking.");
+            "Provider events received, tagged by type and outcome. An `unreconciled` outcome is money "
+            + "taken that no booking holds: it needs a refund.");
 
-    public static readonly Counter<long> PaymentHoldsNotReleased =
+    public static readonly Counter<long> Refunds =
         Meter.CreateCounter<long>(
-            "payments.holds.not_released",
+            "payments.refunds",
             description:
-            "Authorizations we could not give back after a checkout that took nothing. Any value "
-            + "above zero is a guest's money held against a booking they do not have.");
-
-    public static readonly Counter<long> PaymentsFailed =
-        Meter.CreateCounter<long>(
-            "payments.failed",
-            description: "Payments that did not go through, tagged by reason.");
+            "Refunds, tagged by status: requested, succeeded, failed. A failed refund is money a guest "
+            + "is owed that the provider would not return.");
 
     public static readonly Counter<long> HotelSearches =
         Meter.CreateCounter<long>(

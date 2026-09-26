@@ -15,6 +15,7 @@ using HotelBooking.Domain.Cities;
 using HotelBooking.Domain.Deals;
 using HotelBooking.Domain.Hotels;
 using HotelBooking.Domain.Idempotency;
+using HotelBooking.Domain.Payments;
 using HotelBooking.Domain.RefreshTokens;
 using HotelBooking.Domain.Rooms;
 using HotelBooking.Domain.Users;
@@ -33,7 +34,11 @@ using HotelBooking.Infrastructure.Time;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+
 using StackExchange.Redis;
+
+using Stripe;
 
 namespace HotelBooking.Infrastructure;
 
@@ -42,6 +47,12 @@ public static class DependencyInjection
     private const string DatabaseConnectionName = "Database";
 
     private const int CommandTimeoutSeconds = 10;
+
+    private const int StripeNetworkRetries = 2;
+
+    private static readonly TimeSpan StripeAttemptTimeout = TimeSpan.FromSeconds(8);
+
+    private static readonly TimeSpan StripeConnectionLifetime = TimeSpan.FromMinutes(5);
 
     extension(IServiceCollection services)
     {
@@ -95,6 +106,7 @@ public static class DependencyInjection
             services.AddScoped<IRoomRepository, RoomRepository>();
             services.AddScoped<IBookingRepository, BookingRepository>();
             services.AddScoped<IBookingQueries, BookingQueries>();
+            services.AddScoped<IPaymentRepository, PaymentRepository>();
             services.AddScoped<IIdempotencyRepository, IdempotencyRepository>();
             services.AddScoped<IOutboxStore, SqlOutboxStore>();
 
@@ -104,7 +116,20 @@ public static class DependencyInjection
         public IServiceCollection AddWorkers(IConfiguration configuration) =>
             services
                 .AddOutboxDispatcher(configuration)
+                .AddPaymentWorkers(configuration)
                 .AddNotifications(configuration);
+
+        private IServiceCollection AddPaymentWorkers(IConfiguration configuration)
+        {
+            services.Configure<UnfinishedPaymentsOptions>(configuration.GetSection(UnfinishedPaymentsOptions.SectionName));
+
+            services.AddScoped<IPaymentService, PaymentService>();
+            services.AddScoped<IPaymentRefundService, PaymentRefundService>();
+
+            services.AddHostedService<UnfinishedPaymentsWorker>();
+
+            return services;
+        }
 
         private IServiceCollection AddOutboxDispatcher(IConfiguration configuration)
         {
@@ -144,16 +169,56 @@ public static class DependencyInjection
 
             MailKit.Telemetry.SmtpClient.Configure();
 
-            return services.AddOutboxHandler<SendBookingConfirmationHandler>();
+            return services
+                .AddOutboxHandler<SendBookingConfirmationHandler>()
+                .AddOutboxHandler<SendBookingCancellationHandler>()
+                .AddOutboxHandler<SendWelcomeEmailHandler>();
         }
 
         private IServiceCollection AddPayments(IConfiguration configuration)
         {
-            services.Configure<FakePaymentOptions>(configuration.GetSection(FakePaymentOptions.SectionName));
+            services.AddOptions<PaymentOptions>()
+                .Bind(configuration.GetSection(PaymentOptions.SectionName))
+                .Validate(
+                    options => options.Provider is PaymentOptions.Stripe or PaymentOptions.Fake,
+                    $"'{PaymentOptions.SectionName}:Provider' must be '{PaymentOptions.Stripe}' or "
+                    + $"'{PaymentOptions.Fake}'.")
+                .ValidateOnStart();
 
-            services.AddSingleton<IPaymentGateway, FakePaymentGateway>();
+            var provider = configuration[$"{PaymentOptions.SectionName}:Provider"] ?? PaymentOptions.Fake;
 
-            return services;
+            if (provider != PaymentOptions.Stripe)
+            {
+                services.Configure<FakePaymentOptions>(configuration.GetSection(FakePaymentOptions.SectionName));
+
+                return services.AddSingleton<IPaymentProvider, FakePaymentProvider>();
+            }
+
+            services.AddOptions<StripePaymentOptions>()
+                .Bind(configuration.GetSection(StripePaymentOptions.SectionName))
+                .Validate(
+                    options => options.IsTestModeKey,
+                    $"'{StripePaymentOptions.SectionName}:SecretKey' must be a Stripe test-mode key; "
+                    + "live keys are refused.")
+                .Validate(
+                    options => options.WebhookSecret.StartsWith("whsec_", StringComparison.Ordinal),
+                    $"'{StripePaymentOptions.SectionName}:WebhookSecret' must be the whsec_ secret Stripe "
+                    + "signs events with.")
+                .Validate(
+                    options => Uri.TryCreate(options.ReturnUrl, UriKind.Absolute, out _),
+                    $"'{StripePaymentOptions.SectionName}:ReturnUrl' must be an absolute URL.")
+                .ValidateOnStart();
+
+            services.AddSingleton<IStripeClient>(serviceProvider => new StripeClient(
+                apiKey: serviceProvider.GetRequiredService<IOptions<StripePaymentOptions>>().Value.SecretKey,
+                httpClient: new SystemNetHttpClient(
+                    new HttpClient(new SocketsHttpHandler { PooledConnectionLifetime = StripeConnectionLifetime })
+                    {
+                        Timeout = StripeAttemptTimeout
+                    },
+                    maxNetworkRetries: StripeNetworkRetries)));
+
+            return services.AddSingleton<IPaymentProvider, StripePaymentProvider>();
         }
 
         private IServiceCollection AddHealthDiagnostics()

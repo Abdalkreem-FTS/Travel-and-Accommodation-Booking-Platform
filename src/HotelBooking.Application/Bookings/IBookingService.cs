@@ -10,4 +10,6 @@ public interface IBookingService
         Guid userId,
         string? idempotencyKey,
         CancellationToken cancellationToken = default);
+
+    Task<Result<BookingDto>> GetAsync(Guid bookingId, Guid userId, CancellationToken cancellationToken = default);
 }

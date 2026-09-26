@@ -7,6 +7,7 @@ using HotelBooking.Application.Carts;
 using HotelBooking.Application.Cities;
 using HotelBooking.Application.Deals;
 using HotelBooking.Application.Hotels;
+using HotelBooking.Application.Payments;
 using HotelBooking.Application.Rooms;
 using HotelBooking.Application.Users;
 using HotelBooking.Application.Visits;
@@ -26,6 +27,8 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IBookingService, BookingService>();
         services.AddScoped<IBookingCancellationService, BookingCancellationService>();
+        services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<IPaymentRefundService, PaymentRefundService>();
         services.AddScoped<ICartService, CartService>();
         services.AddScoped<ICityService, CityService>();
         services.AddScoped<IHotelService, HotelService>();

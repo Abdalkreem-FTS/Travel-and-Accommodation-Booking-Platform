@@ -4,6 +4,7 @@ using HotelBooking.Domain.Cities;
 using HotelBooking.Domain.Deals;
 using HotelBooking.Domain.Hotels;
 using HotelBooking.Domain.Idempotency;
+using HotelBooking.Domain.Payments;
 using HotelBooking.Domain.RefreshTokens;
 using HotelBooking.Domain.Rooms;
 using HotelBooking.Domain.Users;
@@ -33,6 +34,8 @@ public sealed class HotelBookingDbContext(DbContextOptions<HotelBookingDbContext
     public DbSet<Booking> Bookings => Set<Booking>();
 
     public DbSet<RoomNight> RoomNightInventory => Set<RoomNight>();
+
+    public DbSet<Payment> Payments => Set<Payment>();
 
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 

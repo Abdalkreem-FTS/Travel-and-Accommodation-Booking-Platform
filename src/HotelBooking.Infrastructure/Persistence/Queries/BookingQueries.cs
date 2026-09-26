@@ -83,4 +83,50 @@ internal sealed class BookingQueries(HotelBookingDbContext context) : IBookingQu
                     line.Amount))
             ]);
     }
+
+    public async Task<BookingCancellationNoticeDto?> GetCancellationNoticeAsync(
+        Guid bookingId,
+        CancellationToken cancellationToken = default)
+    {
+        var row = await (
+                from booking in context.Bookings.AsNoTracking().Where(booking => booking.Id == bookingId)
+                join guest in context.Users.IgnoreQueryFilters()
+                    on booking.UserId equals guest.Id
+                join hotel in context.Hotels.IgnoreQueryFilters()
+                    on booking.HotelId equals hotel.Id
+                join city in context.Cities.IgnoreQueryFilters()
+                    on hotel.CityId equals city.Id
+                select new
+                {
+                    booking.Id,
+                    booking.Confirmation,
+                    booking.EarliestCheckIn,
+                    booking.LatestCheckOut,
+                    booking.TotalPrice.Currency,
+                    GuestEmail = guest.Email,
+                    guest.FirstName,
+                    guest.LastName,
+                    HotelName = hotel.Name,
+                    CityName = city.Name,
+                    RefundAmount = context.Payments
+                        .Where(payment => payment.BookingId == booking.Id && payment.RefundRequestedAtUtc != null)
+                        .Select(payment => (decimal?)payment.Amount.Amount)
+                        .FirstOrDefault()
+                })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return row is null
+            ? null
+            : new BookingCancellationNoticeDto(
+                row.Id,
+                row.Confirmation.Value,
+                row.GuestEmail.Value,
+                $"{row.FirstName} {row.LastName}",
+                row.HotelName,
+                row.CityName,
+                row.EarliestCheckIn,
+                row.LatestCheckOut,
+                row.RefundAmount,
+                row.Currency);
+    }
 }

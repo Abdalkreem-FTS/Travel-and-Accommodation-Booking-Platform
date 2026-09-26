@@ -12,6 +12,7 @@ using HotelBooking.Domain.Carts;
 using HotelBooking.Domain.Common;
 using HotelBooking.Domain.Deals;
 using HotelBooking.Domain.Idempotency;
+using HotelBooking.Domain.Payments;
 using HotelBooking.Domain.Results;
 using HotelBooking.Domain.Rooms;
 
@@ -21,12 +22,12 @@ namespace HotelBooking.Application.Bookings;
 
 public sealed class BookingService(
     IBookingRepository bookingRepository,
+    IPaymentRepository paymentRepository,
     IRoomRepository roomRepository,
     IDealRepository dealRepository,
     ICartRepository cartRepository,
     IIdempotencyRepository idempotencyRepository,
-    IBookingCancellationService bookingCancellationService,
-    IPaymentGateway paymentGateway,
+    IPaymentProvider paymentProvider,
     IUnitOfWork unitOfWork,
     IGuidProvider guidProvider,
     IDateTimeProvider dateTimeProvider,
@@ -35,22 +36,11 @@ public sealed class BookingService(
 {
     private const string Endpoint = "POST /bookings";
 
-    private static readonly TimeSpan SettlementTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan CheckoutTimeout = TimeSpan.FromSeconds(15);
 
-    private static readonly TimeSpan CompensationTimeout = TimeSpan.FromSeconds(30);
-
-    private static readonly TimeSpan HoldReleaseTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan AbandonTimeout = TimeSpan.FromSeconds(30);
 
     private static readonly TimeSpan CartCleanupTimeout = TimeSpan.FromSeconds(5);
-
-    private enum Hold
-    {
-        Release,
-        Captured,
-        Elsewhere
-    }
-
-    private readonly record struct Settlement(Result<BookingDto> Answer, Hold Hold);
 
     public async Task<Result<BookingDto>> CreateAsync(
         CreateBookingRequest request,
@@ -67,6 +57,23 @@ public sealed class BookingService(
             new KeyValuePair<string, object?>("outcome", Outcome(result)));
 
         return result;
+    }
+
+    public async Task<Result<BookingDto>> GetAsync(
+        Guid bookingId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var booking = await bookingRepository.GetWithLinesAsync(bookingId, cancellationToken);
+
+        if (booking is null || booking.UserId != userId)
+        {
+            return BookingErrors.NotFound;
+        }
+
+        var payment = await paymentRepository.GetForBookingAsync(bookingId, cancellationToken);
+
+        return BookingDto.From(booking, payment);
     }
 
     private static string Outcome(Result<BookingDto> result) =>
@@ -113,12 +120,11 @@ public sealed class BookingService(
             return stays.Errors;
         }
 
-        var booking = Booking.Create(
+        var booking = Booking.Reserve(
             guidProvider.NewSortable(),
             userId,
             stays.Value,
             ConfirmationNumber.From(guidProvider.NewOpaque()),
-            guidProvider.NewSortable(),
             dateTimeProvider.UtcNow);
 
         if (booking.IsError)
@@ -126,7 +132,27 @@ public sealed class BookingService(
             return booking.Errors;
         }
 
-        return await CheckOutAsync(userId, key.Value, booking.Value, stays.Value, cancellationToken);
+        var payment = Payment.Start(guidProvider.NewSortable(), booking.Value, dateTimeProvider.UtcNow);
+
+        if (payment.IsError)
+        {
+            return payment.Errors;
+        }
+
+        var reserved = await unitOfWork.ExecuteInTransactionAsync(
+            async token => await ReserveAsync(
+                userId, key.Value, booking.Value, payment.Value, stays.Value, token),
+            cancellationToken);
+
+        if (!reserved.IsError)
+        {
+            return await OpenCheckoutAsync(userId, booking.Value, payment.Value, stays.Value, cancellationToken);
+        }
+
+        CountConflict(reserved.TopError);
+
+        return reserved.Errors;
+
     }
 
     private async Task<Result<BookingDto>?> ReplayAsync(
@@ -153,112 +179,23 @@ public sealed class BookingService(
             return IdempotencyErrors.ResultMissing;
         }
 
+        var payment = await paymentRepository.GetForBookingAsync(bookingId, cancellationToken);
+
         Telemetry.IdempotentReplays.Add(1);
 
         logger.LogInformation(
             "Answered user {UserId} with booking {BookingId} again: the same idempotency key came "
-            + "back, so nothing was booked or charged a second time",
+            + "back, so nothing was reserved or charged a second time",
             userId, bookingId);
 
-        return BookingDto.From(booking);
+        return BookingDto.From(booking, payment);
     }
 
-    private async Task<Result<BookingDto>> CheckOutAsync(
+    private async Task<Result<Success>> ReserveAsync(
         Guid userId,
         string idempotencyKey,
         Booking booking,
-        IReadOnlyList<RoomStay> stays,
-        CancellationToken cancellationToken)
-    {
-        var authorization = await paymentGateway.AuthorizeAsync(
-            userId, booking.TotalPrice, AuthorizationReference(userId, idempotencyKey), cancellationToken);
-
-        if (authorization.IsError)
-        {
-            CountPaymentFailure(authorization.TopError);
-
-            logger.LogInformation(
-                "Refused checkout for user {UserId}: the payment was not authorized ({ErrorCode})",
-                userId, authorization.TopError.Code);
-
-            return authorization.Errors;
-        }
-
-        var hold = Hold.Release;
-
-        try
-        {
-            var written = await unitOfWork.ExecuteInTransactionAsync(
-                async token => await WriteBookingAsync(userId, idempotencyKey, booking, stays, token),
-                cancellationToken);
-
-            if (written.IsError)
-            {
-                hold = Abandon(written.TopError);
-
-                return written.Errors;
-            }
-
-            var settled = await SettleAsync(userId, written.Value, authorization.Value, stays);
-
-            hold = settled.Hold;
-
-            return settled.Answer;
-        }
-        finally
-        {
-            if (hold is Hold.Release)
-            {
-                await ReleaseHoldAsync(authorization.Value, booking.Id);
-            }
-        }
-    }
-
-    private async Task<Settlement> SettleAsync(
-        Guid userId,
-        BookingDto booking,
-        PaymentAuthorization authorization,
-        IReadOnlyList<RoomStay> stays)
-    {
-        Result<Success> captured;
-
-        using (var settlement = Budget(SettlementTimeout))
-        {
-            try
-            {
-                captured = await paymentGateway.CaptureAsync(authorization, settlement.Token);
-            }
-            catch (Exception exception)
-            {
-                logger.LogError(
-                    exception, "Capture threw for booking {BookingId}; treating it as a failure", booking.Id);
-
-                captured = PaymentErrors.CaptureFailed;
-            }
-        }
-
-        if (captured.IsError)
-        {
-            return await CompensateAsync(booking);
-        }
-
-        await DropBookedStaysFromCartAsync(userId, stays);
-
-        Telemetry.BookingsCreated.Add(1);
-
-        logger.LogInformation(
-            "Confirmed booking {BookingId} for user {UserId}: {LineCount} stay(s) at hotel {HotelId}, "
-            + "{CheckIn} to {CheckOut}, {Amount} {Currency} captured",
-            booking.Id, userId, booking.Lines.Count, booking.HotelId,
-            booking.CheckIn, booking.CheckOut, booking.TotalAmount, booking.Currency);
-
-        return new Settlement(booking, Hold.Captured);
-    }
-
-    private async Task<Result<BookingDto>> WriteBookingAsync(
-        Guid userId,
-        string idempotencyKey,
-        Booking booking,
+        Payment payment,
         IReadOnlyList<RoomStay> stays,
         CancellationToken cancellationToken)
     {
@@ -285,65 +222,148 @@ public sealed class BookingService(
         }
 
         bookingRepository.Add(booking);
+        paymentRepository.Add(payment);
+
+        return await unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<Result<BookingDto>> OpenCheckoutAsync(
+        Guid userId,
+        Booking booking,
+        Payment payment,
+        IReadOnlyList<RoomStay> stays,
+        CancellationToken cancellationToken)
+    {
+        var checkout = await CreateCheckoutAsync(payment);
+
+        if (checkout.IsError)
+        {
+            await AbandonAsync(booking.Id);
+
+            return PaymentErrors.ProviderUnavailable;
+        }
+
+        var attached = payment.AttachCheckout(checkout.Value.Id, checkout.Value.Url);
+
+        if (attached.IsError)
+        {
+            return attached.Errors;
+        }
 
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return saved.IsError ? saved.Errors : BookingDto.From(booking);
-    }
-
-    private static Hold Abandon(Error failure)
-    {
-        CountConflict(failure);
-
-        return failure == IdempotencyErrors.RequestInProgress ? Hold.Elsewhere : Hold.Release;
-    }
-
-    private async Task<Settlement> CompensateAsync(BookingDto booking)
-    {
-        Telemetry.PaymentsFailed.Add(1, new KeyValuePair<string, object?>("reason", "capture"));
-
-        logger.LogError(
-            "Capture failed for booking {BookingId}; voiding it and releasing its nights", booking.Id);
-
-        if (await TryVoidAsync(booking.Id))
+        if (saved.IsError)
         {
-            return new Settlement(PaymentErrors.CaptureFailed, Hold.Release);
+            logger.LogError(
+                "Checkout {CheckoutId} was opened for payment {PaymentId} but could not be saved "
+                + "({ErrorCode}); booking {BookingId} stays held until the payment expires at {ExpiresAtUtc}",
+                checkout.Value.Id, payment.Id, saved.TopError.Code, booking.Id, payment.ExpiresAtUtc);
+
+            return saved.Errors;
         }
 
-        Telemetry.BookingVoidsFailed.Add(1);
+        await DropBookedStaysFromCartAsync(userId, stays);
 
-        return new Settlement(PaymentErrors.CaptureFailedAndNotReleased, Hold.Elsewhere);
+        Telemetry.BookingsCreated.Add(1);
+        Telemetry.PaymentsStarted.Add(1);
+
+        logger.LogInformation(
+            "Reserved booking {BookingId} for user {UserId}: {LineCount} stay(s) at hotel {HotelId}, "
+            + "{Amount} {Currency} due by {ExpiresAtUtc} through payment {PaymentId}, checkout {CheckoutId}",
+            booking.Id, userId, booking.Lines.Count, booking.HotelId, payment.Amount.Amount,
+            payment.Amount.Currency, payment.ExpiresAtUtc, payment.Id, checkout.Value.Id);
+
+        return BookingDto.From(booking, payment);
     }
 
-    private async Task<bool> TryVoidAsync(Guid bookingId)
+    private async Task<Result<ProviderCheckout>> CreateCheckoutAsync(Payment payment)
     {
-        using var compensation = Budget(CompensationTimeout);
+        using var budget = Budget(CheckoutTimeout);
 
         try
         {
-            var voided = await bookingCancellationService.VoidForFailedPaymentAsync(
-                bookingId, compensation.Token);
+            var checkout = await paymentProvider.CreateCheckoutAsync(payment, budget.Token);
 
-            if (voided.IsSuccess)
+            if (checkout.IsError)
             {
-                return true;
+                logger.LogWarning(
+                    "The payment provider refused a checkout for payment {PaymentId} ({ErrorCode})",
+                    payment.Id, checkout.TopError.Code);
+            }
+
+            return checkout;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(
+                exception, "The payment provider could not open a checkout for payment {PaymentId}", payment.Id);
+
+            return PaymentErrors.ProviderUnavailable;
+        }
+    }
+
+    private async Task AbandonAsync(Guid bookingId)
+    {
+        using var budget = Budget(AbandonTimeout);
+
+        try
+        {
+            var abandoned = await unitOfWork.ExecuteInTransactionAsync<Updated>(
+                async token =>
+                {
+                    var booking = await bookingRepository.GetWithNightsAsync(bookingId, token);
+                    var payment = await paymentRepository.GetForBookingAsync(bookingId, token);
+
+                    if (booking is null || payment is null)
+                    {
+                        return BookingErrors.NotFound;
+                    }
+
+                    var expired = booking.Expire();
+
+                    if (expired.IsError)
+                    {
+                        return expired.Errors;
+                    }
+
+                    var ended = payment.Expire(dateTimeProvider.UtcNow);
+
+                    if (ended.IsError)
+                    {
+                        return ended.Errors;
+                    }
+
+                    var saved = await unitOfWork.SaveChangesAsync(token);
+
+                    return saved.IsError ? saved.Errors : Result.Updated;
+                },
+                budget.Token);
+
+            if (abandoned.IsSuccess)
+            {
+                Telemetry.PaymentsExpired.Add(
+                    1, new KeyValuePair<string, object?>("reason", "checkout_unavailable"));
+
+                logger.LogWarning(
+                    "Expired booking {BookingId} and released its nights: no checkout could be opened",
+                    bookingId);
+
+                return;
             }
 
             logger.LogError(
-                "Booking {BookingId} could not be voided after its capture failed ({ErrorCode}); its "
-                + "nights are still sold and its authorization is still held",
-                bookingId, voided.TopError.Code);
+                "Booking {BookingId} could not be expired after its checkout failed ({ErrorCode}); its "
+                + "nights stay held until its payment expires",
+                bookingId, abandoned.TopError.Code);
         }
         catch (Exception exception)
         {
             logger.LogError(
                 exception,
-                "Booking {BookingId} could not be voided after its capture failed; its nights are "
-                + "still sold and its authorization is still held",
+                "Booking {BookingId} could not be expired after its checkout failed; its nights stay "
+                + "held until its payment expires",
                 bookingId);
         }
-
-        return false;
     }
 
     private async Task<Result<List<BookingItemRequest>>> ResolveItemsAsync(
@@ -461,40 +481,7 @@ public sealed class BookingService(
         }
     }
 
-    private async Task ReleaseHoldAsync(PaymentAuthorization authorization, Guid bookingId)
-    {
-        using var release = Budget(HoldReleaseTimeout);
-
-        try
-        {
-            var released = await paymentGateway.VoidAsync(authorization, release.Token);
-
-            if (released.IsSuccess)
-            {
-                return;
-            }
-
-            logger.LogWarning(
-                "Authorization {AuthorizationId} for booking {BookingId} could not be voided; the "
-                + "guest's money stays held until it expires at the provider",
-                authorization.Id, bookingId);
-        }
-        catch (Exception exception)
-        {
-            logger.LogWarning(
-                exception,
-                "Authorization {AuthorizationId} for booking {BookingId} could not be voided; the "
-                + "guest's money stays held until it expires at the provider",
-                authorization.Id, bookingId);
-        }
-
-        Telemetry.PaymentHoldsNotReleased.Add(1);
-    }
-
     private static CancellationTokenSource Budget(TimeSpan limit) => new(limit);
-
-    private static string AuthorizationReference(Guid userId, string idempotencyKey) =>
-        $"{userId:N}:{idempotencyKey}";
 
     private DateOnly Today => DateOnly.FromDateTime(dateTimeProvider.UtcNow.UtcDateTime);
 
@@ -509,10 +496,4 @@ public sealed class BookingService(
             Telemetry.IdempotentRequestsInProgress.Add(1);
         }
     }
-
-    private static void CountPaymentFailure(Error error) =>
-        Telemetry.PaymentsFailed.Add(
-            1,
-            new KeyValuePair<string, object?>(
-                "reason", error == PaymentErrors.Declined ? "declined" : "authorize"));
 }

@@ -12,6 +12,10 @@ x-api: &api
     ConnectionStrings__Redis: redis:6379
     Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY in .env}
     ForwardedHeaders__GatewayAddress: 172.30.0.250
+    Payments__Fake__WebhookSecret: ${PAYMENT_WEBHOOK_SECRET:?set PAYMENT_WEBHOOK_SECRET in .env}
+    Payments__Provider: ${PAYMENT_PROVIDER:-Fake}
+    Payments__Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}
+    Payments__Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET:-}
     OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
   depends_on:
     sqlserver: { condition: service_healthy }
@@ -87,6 +91,9 @@ services:
       Email__Smtp__Host: mailpit
       Email__Smtp__Port: 1025
       Email__Smtp__FromAddress: reservations@hotelbooking.local
+      Payments__Provider: ${PAYMENT_PROVIDER:-Fake}
+      Payments__Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}
+      Payments__Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on:
       api-1: { condition: service_healthy }
@@ -169,6 +176,7 @@ services:
       - --storage.tsdb.path=/prometheus
     volumes:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus-data:/prometheus
     ports: ["9090:9090"]
     depends_on: [otel-collector]

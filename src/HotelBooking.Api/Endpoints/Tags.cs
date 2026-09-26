@@ -11,4 +11,5 @@ public static class Tags
     public const string Deals = "Deals";
     public const string Cart = "Cart";
     public const string Bookings = "Bookings";
+    public const string Payments = "Payments";
 }

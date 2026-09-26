@@ -21,6 +21,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private const string SigningKey = "integration-test-signing-key-that-is-long-enough-for-hs256";
 
+    public const string PaymentWebhookSecret = "integration-test-payment-webhook-secret";
+
     private static readonly TestContainerImages Images = TestContainerImages.Load();
 
     private readonly MsSqlContainer _sqlServer = new MsSqlBuilder(Images.SqlServerImage).Build();
@@ -130,7 +132,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("ConnectionStrings:Database", _sqlServer.GetConnectionString());
         builder.UseSetting("ConnectionStrings:Redis", _redis.GetConnectionString());
         builder.UseSetting("Authentication:Jwt:SigningKey", SigningKey);
-
+        builder.UseSetting("Payments:Fake:WebhookSecret", PaymentWebhookSecret);
 
         builder.UseSetting("OTEL_EXPORTER_OTLP_ENDPOINT", string.Empty);
 

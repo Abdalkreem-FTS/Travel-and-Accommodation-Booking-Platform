@@ -83,12 +83,11 @@ public sealed class Booking : AggregateRoot<Guid>
         new DateTimeOffset(EarliestCheckIn.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero)
         - CancellationWindow;
 
-    public static Result<Booking> Create(
+    public static Result<Booking> Reserve(
         Guid id,
         Guid userId,
         IReadOnlyList<RoomStay> stays,
         ConfirmationNumber confirmation,
-        Guid eventId,
         DateTimeOffset nowUtc)
     {
         List<Error> errors = [];
@@ -136,12 +135,8 @@ public sealed class Booking : AggregateRoot<Guid>
             return totalPrice.Errors;
         }
 
-        var booking = new Booking(
+        return new Booking(
             id, userId, stays[0].Room.HotelId, lines, totalPrice.Value, confirmation, nowUtc);
-
-        var confirmed = booking.Confirm(eventId, nowUtc);
-
-        return confirmed.IsError ? confirmed.Errors : booking;
     }
 
     public Result<Updated> Confirm(Guid eventId, DateTimeOffset nowUtc)
@@ -190,16 +185,23 @@ public sealed class Booking : AggregateRoot<Guid>
         return Result.Updated;
     }
 
-    public Result<Updated> Cancel(Guid eventId, DateTimeOffset nowUtc)
+    public Result<Success> CanCancel(DateTimeOffset nowUtc)
     {
         if (Status is not (BookingStatus.Pending or BookingStatus.Confirmed))
         {
             return BookingErrors.InvalidTransition;
         }
 
-        if (nowUtc > CancellationDeadline)
+        return nowUtc > CancellationDeadline ? BookingErrors.CancellationWindowClosed : Result.Success;
+    }
+
+    public Result<Updated> Cancel(Guid eventId, DateTimeOffset nowUtc)
+    {
+        var allowed = CanCancel(nowUtc);
+
+        if (allowed.IsError)
         {
-            return BookingErrors.CancellationWindowClosed;
+            return allowed.Errors;
         }
 
         Release(eventId, Reason.RequestedByGuest, nowUtc);
@@ -207,14 +209,16 @@ public sealed class Booking : AggregateRoot<Guid>
         return Result.Updated;
     }
 
-    public Result<Updated> VoidForFailedPayment(Guid eventId, DateTimeOffset nowUtc)
+    public Result<Updated> Expire()
     {
-        if (Status is not (BookingStatus.Pending or BookingStatus.Confirmed))
+        if (Status is not BookingStatus.Pending)
         {
             return BookingErrors.InvalidTransition;
         }
 
-        Release(eventId, Reason.PaymentFailed, nowUtc);
+        Status = BookingStatus.Expired;
+
+        _nights.Clear();
 
         return Result.Updated;
     }
@@ -227,9 +231,8 @@ public sealed class Booking : AggregateRoot<Guid>
 
         _nights.Clear();
 
-        // Raise(new BookingCancelled(
-        //     eventId, Id, UserId, HotelId, Confirmation.Value, reason, nowUtc));
-        _ = eventId;
+        Raise(new BookingCancelled(
+            eventId, Id, UserId, HotelId, Confirmation.Value, reason, nowUtc));
     }
 
     private static List<BookingLine> BuildLines(

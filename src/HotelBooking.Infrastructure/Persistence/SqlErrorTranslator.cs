@@ -27,7 +27,8 @@ internal static class SqlErrorTranslator
         ("PK_RoomNightInventory", () => BookingErrors.RoomUnavailable),
         ("PK_DealNights", () => DealErrors.OverlapsExisting),
         ("PK_IdempotencyRecords", () => IdempotencyErrors.RequestInProgress),
-        ("IX_Bookings_ConfirmationNumber", () => BookingErrors.ConfirmationNumberCollision)
+        ("IX_Bookings_ConfirmationNumber", () => BookingErrors.ConfirmationNumberCollision),
+        ("IX_Bookings_UserId_Pending", () => BookingErrors.PaymentPending)
     ];
 
     public static Error? Translate(DbUpdateException exception)

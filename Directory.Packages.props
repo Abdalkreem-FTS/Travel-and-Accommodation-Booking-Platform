@@ -33,6 +33,9 @@
   <ItemGroup Label="Email">
     <PackageVersion Include="MailKit" Version="4.18.0" />
   </ItemGroup>
+  <ItemGroup Label="Payments">
+    <PackageVersion Include="Stripe.net" Version="52.4.2" />
+  </ItemGroup>
   <ItemGroup Label="Validation">
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
   </ItemGroup>

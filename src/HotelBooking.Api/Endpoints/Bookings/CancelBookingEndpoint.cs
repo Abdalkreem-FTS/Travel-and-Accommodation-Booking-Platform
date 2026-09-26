@@ -42,11 +42,19 @@ public sealed class CancelBookingEndpoint : IEndpoint
                 + "`409 Persistence.ConcurrencyConflict`.\n\n"
                 + "A booking belonging to another guest answers `404` rather than `403`, so this "
                 + "endpoint cannot be used to discover which booking ids exist.\n\n"
-                + "**No refund is issued yet** — cancelling releases the room, but money captured "
-                + "at checkout is not returned by this endpoint.")
+                + "**A booking still waiting for payment** has its checkout closed at the payment "
+                + "provider first, so the guest cannot pay for a stay they no longer hold. If they "
+                + "paid at the last second the booking is kept and this is "
+                + "`409 Booking.PaymentJustCompleted`; if the provider cannot be reached it is "
+                + "`502 Payment.ProviderUnavailable` and nothing changes.\n\n"
+                + "**A paid booking is refunded in full.** The refund is requested in the same "
+                + "transaction and answered as `refund` with status `Pending`; the workers send "
+                + "every pending refund to the payment provider within a minute, so a crash cannot "
+                + "lose it. Read the booking to see it become `Succeeded`.")
             .Produces<BookingCancellationDto>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status502BadGateway)
             .RequireAuthorization(Policy.AuthenticatedUser);
 }

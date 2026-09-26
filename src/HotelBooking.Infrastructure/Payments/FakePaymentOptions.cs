@@ -4,7 +4,9 @@ public sealed class FakePaymentOptions
 {
     public const string SectionName = "Payments:Fake";
 
-    public bool DeclineAuthorizations { get; set; }
+    public bool FailCheckouts { get; set; }
 
-    public bool FailCaptures { get; set; }
+    public bool RejectRefunds { get; set; }
+
+    public string WebhookSecret { get; set; } = string.Empty;
 }

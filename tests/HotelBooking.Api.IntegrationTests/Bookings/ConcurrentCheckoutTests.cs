@@ -28,6 +28,8 @@ public sealed class ConcurrentCheckoutTests(ApiFactory factory) : IntegrationTes
 
     private const string BookingRows = "SELECT COUNT(*) AS Value FROM Bookings";
 
+    private const string PaymentRows = "SELECT COUNT(*) AS Value FROM Payments";
+
     private static readonly DateTimeOffset Seeded = new(2026, 9, 17, 10, 0, 0, TimeSpan.Zero);
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -41,13 +43,15 @@ public sealed class ConcurrentCheckoutTests(ApiFactory factory) : IntegrationTes
     public async Task Post_FiftyTimesAtOnceForOneRoom_SellsTheseNightsExactlyOnce(int attempt)
     {
         var roomId = await ARoomAsync();
-        var session = await SignUpAndLogInAsync(Email);
+
+        var guests = await Task.WhenAll(
+            Enumerable.Range(0, Checkouts).Select(guest => SignUpAndLogInAsync($"guest-{guest}@example.com")));
 
         var checkIn = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30);
         var checkOut = checkIn.AddDays(Nights);
 
         var responses = await Task.WhenAll(
-            Enumerable.Range(0, Checkouts).Select(_ => CheckOutAsync(session.AccessToken, roomId, checkIn, checkOut)));
+            guests.Select(guest => CheckOutAsync(guest.AccessToken, roomId, checkIn, checkOut)));
 
         var statuses = responses.Select(response => response.StatusCode).ToArray();
 
@@ -70,11 +74,52 @@ public sealed class ConcurrentCheckoutTests(ApiFactory factory) : IntegrationTes
 
         (await CountAsync(InventoryRows)).ShouldBe(Nights, "the ledger must hold one row per sold night");
         (await CountAsync(BookingRows)).ShouldBe(1);
+        (await CountAsync(PaymentRows)).ShouldBe(1, "only the winner is asked to pay");
 
         foreach (var response in responses)
         {
             response.Dispose();
         }
+    }
+
+    [Fact]
+    public async Task Post_ReservesTheBookingAndHandsTheGuestACheckoutThatExpiresInThirtyMinutes()
+    {
+        var roomId = await ARoomAsync();
+        var session = await SignUpAndLogInAsync(Email);
+        var checkIn = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30);
+
+        using var response = await CheckOutAsync(session.AccessToken, roomId, checkIn, checkIn.AddDays(Nights));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Token));
+        var booking = body.RootElement;
+        var payment = booking.GetProperty("payment");
+
+        booking.GetProperty("status").GetString().ShouldBe("Pending", "nothing is confirmed until the money arrives");
+        payment.GetProperty("status").GetString().ShouldBe("Pending");
+        payment.GetProperty("amount").GetDecimal().ShouldBe(booking.GetProperty("totalAmount").GetDecimal());
+        payment.GetProperty("checkoutUrl").GetString().ShouldNotBeNullOrWhiteSpace();
+        payment.GetProperty("expiresAtUtc").GetDateTimeOffset()
+            .ShouldBe(DateTimeOffset.UtcNow.AddMinutes(30), TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    public async Task Post_WhileTheGuestAlreadyHasABookingWaitingForPayment_IsRefusedByTheDatabase()
+    {
+        var roomId = await ARoomAsync();
+        var session = await SignUpAndLogInAsync(Email);
+        var checkIn = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30);
+
+        using var first = await CheckOutAsync(session.AccessToken, roomId, checkIn, checkIn.AddDays(1));
+        using var second = await CheckOutAsync(session.AccessToken, roomId, checkIn.AddDays(5), checkIn.AddDays(6));
+
+        first.StatusCode.ShouldBe(HttpStatusCode.Created);
+        second.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        (await ErrorCodeAsync(second)).ShouldBe("Booking.PaymentPending");
+
+        (await CountAsync(InventoryRows)).ShouldBe(1, "the refused checkout must hold no nights");
     }
 
     private async Task<HttpResponseMessage> CheckOutAsync(

@@ -39,6 +39,14 @@ public static class BookingErrors
     public static Error RoomUnavailable => Error.Conflict(
         "Booking.RoomUnavailable", "That room is already booked for one or more of those nights.");
 
+    public static Error PaymentPending => Error.Conflict(
+        "Booking.PaymentPending",
+        "You already have a booking waiting for payment. Pay for it or cancel it before booking again.");
+
+    public static Error PaymentJustCompleted => Error.Conflict(
+        "Booking.PaymentJustCompleted",
+        "The payment for this booking has just gone through, so it is being confirmed. Cancel it again once it shows as confirmed.");
+
     public static Error ConfirmationNumberCollision => Error.Conflict(
         "Booking.ConfirmationNumberCollision",
         "Could not allocate a confirmation number for this booking. Please submit it again.");

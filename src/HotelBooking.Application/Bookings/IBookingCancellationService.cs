@@ -9,8 +9,4 @@ public interface IBookingCancellationService
         Guid bookingId,
         Guid userId,
         CancellationToken cancellationToken = default);
-
-    Task<Result<Updated>> VoidForFailedPaymentAsync(
-        Guid bookingId,
-        CancellationToken cancellationToken = default);
 }

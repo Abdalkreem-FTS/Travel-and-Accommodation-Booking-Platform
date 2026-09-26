@@ -213,6 +213,12 @@ namespace HotelBooking.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("CheckOut");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -245,7 +251,11 @@ namespace HotelBooking.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("HotelId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex(new[] { "UserId" }, "IX_Bookings_UserId");
+
+                    b.HasIndex(new[] { "UserId" }, "IX_Bookings_UserId_Pending")
+                        .IsUnique()
+                        .HasFilter("[Status] = 0");
 
                     b.ToTable("Bookings", (string)null);
                 });
@@ -616,6 +626,93 @@ namespace HotelBooking.Infrastructure.Persistence.Migrations
                     b.ToTable("IdempotencyRecords", (string)null);
                 });
 
+            modelBuilder.Entity("HotelBooking.Domain.Payments.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CheckoutUrl")
+                        .HasMaxLength(2048)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(2048)");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ProviderCheckoutId")
+                        .HasMaxLength(255)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("ProviderPaymentId")
+                        .HasMaxLength(255)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("ProviderRefundId")
+                        .HasMaxLength(255)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTimeOffset?>("RefundRequestedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("RefundResolvedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("ResolvedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Amount", "HotelBooking.Domain.Payments.Payment.Amount#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("decimal(18,2)")
+                                .HasColumnName("Amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .IsUnicode(false)
+                                .HasColumnType("char(3)")
+                                .HasColumnName("Currency")
+                                .IsFixedLength();
+                        });
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Payments_BookingId");
+
+                    b.HasIndex("ProviderCheckoutId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Payments_ProviderCheckoutId")
+                        .HasFilter("[ProviderCheckoutId] IS NOT NULL");
+
+                    b.HasIndex(new[] { "ExpiresAtUtc" }, "IX_Payments_Pending_ExpiresAtUtc")
+                        .HasFilter("[Status] = 0");
+
+                    b.HasIndex(new[] { "RefundRequestedAtUtc" }, "IX_Payments_Refunding_RefundRequestedAtUtc")
+                        .HasFilter("[Status] = 3");
+
+                    b.ToTable("Payments", (string)null);
+                });
+
             modelBuilder.Entity("HotelBooking.Domain.RefreshTokens.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -973,6 +1070,15 @@ namespace HotelBooking.Infrastructure.Persistence.Migrations
                     b.Navigation("AmenityLinks");
 
                     b.Navigation("Images");
+                });
+
+            modelBuilder.Entity("HotelBooking.Domain.Payments.Payment", b =>
+                {
+                    b.HasOne("HotelBooking.Domain.Bookings.Booking", null)
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("HotelBooking.Domain.RefreshTokens.RefreshToken", b =>
