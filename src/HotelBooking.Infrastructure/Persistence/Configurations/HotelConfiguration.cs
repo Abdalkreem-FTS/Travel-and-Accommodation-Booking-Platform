@@ -95,6 +95,10 @@ internal sealed class HotelConfiguration : IEntityTypeConfiguration<Hotel>
             .HasDatabaseName("IX_Hotels_CityId_Name")
             .HasFilter("[IsDeleted] = 0");
 
+        builder.HasIndex(hotel => new { hotel.CityId, hotel.Name, hotel.Id })
+            .HasDatabaseName("IX_Hotels_CityId_Name_Id")
+            .HasFilter("[IsDeleted] = 0");
+
         builder.HasIndex(hotel => new { hotel.CityId, hotel.StarRating })
             .HasDatabaseName("IX_Hotels_CityId_StarRating")
             .IncludeProperties(hotel => new { hotel.Name, hotel.ThumbnailUrl })

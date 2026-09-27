@@ -84,6 +84,28 @@ public sealed class DealService(
             : DealDto.From(deal, concurrencyGuard.TokenFor(deal));
     }
 
+    public async Task<Result<PagedList<DealDto>>> ListForRoomAsync(
+        Guid roomId,
+        RoomDealsRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        List<Error> errors = [];
+
+        var paging = PageRequest.Read(request.Page, request.PageSize, errors);
+
+        if (errors.Count > 0)
+        {
+            return errors;
+        }
+
+        if (!await roomRepository.ExistsAsync(roomId, cancellationToken))
+        {
+            return RoomErrors.NotFound;
+        }
+
+        return await dealQueries.ListForRoomAsync(roomId, paging, cancellationToken);
+    }
+
     public async Task<Result<DealDto>> UpdateAsync(
         Guid id,
         UpdateDealRequest request,

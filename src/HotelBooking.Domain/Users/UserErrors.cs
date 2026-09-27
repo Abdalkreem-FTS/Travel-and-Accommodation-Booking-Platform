@@ -43,6 +43,6 @@ public static class UserErrors
 
     public static Error RoleRevocationIncomplete => Error.Unavailable(
         "User.RoleRevocationIncomplete",
-        "The role was revoked and the sessions were ended, but the access tokens already issued "
-        + "could not be revoked yet. Please retry.");
+        "The role was revoked and every session was ended, but access tokens already issued keep "
+        + "the role until they expire, within one access-token lifetime. Nothing needs to be retried.");
 }

@@ -90,7 +90,7 @@ public sealed class BookingServiceTests
             .Returns(new ProviderCheckout("cs_123", CheckoutUrl));
 
         _service = new BookingService(
-            _bookings, _payments, _rooms, _deals, _carts, _idempotency, _provider, _unitOfWork, guids,
+            _bookings, Substitute.For<IBookingQueries>(), _payments, _rooms, _deals, _carts, _idempotency, _provider, _unitOfWork, guids,
             clock, new CreateBookingRequestValidator(), NullLogger<BookingService>.Instance);
     }
 

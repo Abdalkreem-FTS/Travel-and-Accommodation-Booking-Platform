@@ -10,6 +10,45 @@ namespace HotelBooking.Infrastructure.Persistence.Queries;
 
 internal sealed class HotelQueries(HotelBookingDbContext context) : IHotelQueries
 {
+    public async Task<PagedList<CityHotelDto>> ListForCityAsync(
+        Guid cityId,
+        string? search,
+        PageRequest paging,
+        CancellationToken cancellationToken = default)
+    {
+        var hotels = context.Hotels.AsNoTracking().Where(hotel => hotel.CityId == cityId);
+
+        if (search is not null)
+        {
+            hotels = hotels.Where(hotel => EF.Functions.Like(hotel.Name, $"%{search}%"));
+        }
+
+        var totalCount = await hotels.CountAsync(cancellationToken);
+
+        var rows = await hotels
+            .OrderBy(hotel => hotel.Name)
+            .ThenBy(hotel => hotel.Id)
+            .Skip(paging.Skip)
+            .Take(paging.PageSize)
+            .Select(hotel => new
+            {
+                hotel.Id,
+                hotel.Name,
+                hotel.StarRating,
+                hotel.ThumbnailUrl,
+                RoomCount = context.Rooms.Count(room => room.HotelId == hotel.Id)
+            })
+            .ToListAsync(cancellationToken);
+
+        List<CityHotelDto> items =
+        [
+            .. rows.Select(row => new CityHotelDto(
+                row.Id, row.Name, row.StarRating.Value, row.ThumbnailUrl, row.RoomCount))
+        ];
+
+        return new PagedList<CityHotelDto>(items, paging.Page, paging.PageSize, totalCount);
+    }
+
     public async Task<PagedList<HotelSummaryDto>> SearchAsync(
         HotelSearchCriteria criteria,
         CancellationToken cancellationToken = default)

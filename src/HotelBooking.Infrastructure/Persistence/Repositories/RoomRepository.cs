@@ -18,6 +18,9 @@ internal sealed class RoomRepository(HotelBookingDbContext context) : IRoomRepos
                 .Where(room => ids.Contains(room.Id))
                 .ToListAsync(cancellationToken);
 
+    public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default) =>
+        context.Rooms.AnyAsync(room => room.Id == id, cancellationToken);
+
     public Task<bool> ExistsInHotelAsync(Guid hotelId, CancellationToken cancellationToken = default) =>
         context.Rooms.AnyAsync(room => room.HotelId == hotelId, cancellationToken);
 

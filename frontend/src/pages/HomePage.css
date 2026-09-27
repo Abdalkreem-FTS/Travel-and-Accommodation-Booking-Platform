@@ -1,0 +1,16 @@
+/* Home page only. The card styles are shared, so they live in index.css. */
+
+.home-section {
+  margin-bottom: 2rem;
+}
+
+.deal-badge {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  background: var(--color-error);
+  color: #ffffff;
+  font-weight: 700;
+}

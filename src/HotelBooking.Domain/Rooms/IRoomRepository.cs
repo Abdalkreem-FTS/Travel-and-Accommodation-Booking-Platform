@@ -8,6 +8,8 @@ public interface IRoomRepository
         IReadOnlyCollection<Guid> ids,
         CancellationToken cancellationToken = default);
 
+    Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default);
+
     Task<bool> ExistsInHotelAsync(Guid hotelId, CancellationToken cancellationToken = default);
 
     void Add(Room room);

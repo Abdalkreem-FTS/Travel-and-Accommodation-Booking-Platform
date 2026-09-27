@@ -1,0 +1,86 @@
+/* The hotel search page: filters on the left, results on the right. On a phone
+   the filters sit above the results. */
+
+.search-layout {
+  display: grid;
+  /* minmax(0, 1fr), not 1fr: a plain 1fr column never gets narrower than its
+     widest content (a date input is quite wide), and would push past a phone's
+     screen edge. The 0 lets it shrink to fit. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+}
+
+@media (min-width: 720px) {
+  .search-layout {
+    grid-template-columns: 240px minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.search-filters {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+}
+
+/* On a phone, two small fields per row (dates, guests, prices) so the form
+   isn't a very long column. Fields that need the room take the whole row. */
+@media (max-width: 719px) {
+  .search-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .search-filters > :first-child,
+  .search-filters > .search-stars,
+  .search-filters > .search-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+.search-stars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.search-stars legend {
+  width: 100%;
+  margin-bottom: 0.25rem;
+  padding: 0;
+  font-weight: 600;
+}
+
+.search-stars label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.search-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.search-retry {
+  margin-top: 0.25rem;
+}
+
+.search-results-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.search-count {
+  margin: 0;
+}

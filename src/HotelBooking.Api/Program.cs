@@ -67,6 +67,7 @@ await app.Services.MigrateDatabaseAsync();
 if (app.Environment.IsDevelopment())
 {
     await app.Services.SeedDevelopmentCatalogAsync();
+    await app.Services.SeedDevelopmentAdminAsync(app.Configuration["Seed:Admin:Email"], app.Configuration["Seed:Admin:Password"]);
 }
 
 await app.RunAsync();

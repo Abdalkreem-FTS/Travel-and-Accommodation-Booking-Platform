@@ -56,7 +56,7 @@ public sealed class HotelServiceTests
         _unitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(Result.Success);
 
         _service = new HotelService(
-            _hotels, _cities, _rooms, _amenities, _cache, Substitute.For<IVisitTracker>(), _unitOfWork, guard,
+            _hotels, Substitute.For<IHotelQueries>(), _cities, _rooms, _amenities, _cache, Substitute.For<IVisitTracker>(), _unitOfWork, guard,
             Substitute.For<IGuidProvider>(), clock, NullLogger<HotelService>.Instance);
     }
 

@@ -38,8 +38,10 @@ public sealed class RevokeUserRoleEndpoint : IEndpoint
                 + "administrator.\n\n"
                 + "If the role is revoked but Redis cannot be reached to deny the live tokens, the "
                 + "answer is `503 User.RoleRevocationIncomplete`: the sessions are already dead and "
-                + "no new token can be minted, but tokens already issued keep the role for up to "
-                + "one access-token lifetime. Retrying is safe.")
+                + "no new token can be minted, but tokens already issued keep the role until they "
+                + "expire, within one access-token lifetime (15 minutes by default). The revocation "
+                + "has already happened, so there is **nothing to retry**: a retry finds the role "
+                + "gone (`404 User.RoleNotGranted`) and denies nothing more. Wait out the window.")
             .Produces(StatusCodes.Status204NoContent)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)

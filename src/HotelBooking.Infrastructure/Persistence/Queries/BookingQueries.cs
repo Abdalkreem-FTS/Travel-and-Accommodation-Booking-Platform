@@ -1,5 +1,6 @@
 using HotelBooking.Application.Bookings;
 using HotelBooking.Application.Bookings.Dtos;
+using HotelBooking.Application.Common;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +8,59 @@ namespace HotelBooking.Infrastructure.Persistence.Queries;
 
 internal sealed class BookingQueries(HotelBookingDbContext context) : IBookingQueries
 {
+    public async Task<PagedList<BookingSummaryDto>> ListForUserAsync(
+        Guid userId,
+        PageRequest paging,
+        CancellationToken cancellationToken = default)
+    {
+        var bookings = context.Bookings.AsNoTracking().Where(booking => booking.UserId == userId);
+
+        var totalCount = await bookings.CountAsync(cancellationToken);
+
+        var rows = await (
+                from booking in bookings
+                    .OrderByDescending(booking => booking.CreatedAtUtc)
+                    .ThenByDescending(booking => booking.Id)
+                    .Skip(paging.Skip)
+                    .Take(paging.PageSize)
+                join hotel in context.Hotels.IgnoreQueryFilters()
+                    on booking.HotelId equals hotel.Id
+                orderby booking.CreatedAtUtc descending, booking.Id descending
+                select new
+                {
+                    booking.Id,
+                    booking.HotelId,
+                    HotelName = hotel.Name,
+                    booking.Confirmation,
+                    booking.Status,
+                    booking.EarliestCheckIn,
+                    booking.LatestCheckOut,
+                    Rooms = booking.Lines.Count,
+                    booking.TotalPrice.Amount,
+                    booking.TotalPrice.Currency,
+                    booking.CreatedAtUtc
+                })
+            .ToListAsync(cancellationToken);
+
+        List<BookingSummaryDto> items =
+        [
+            .. rows.Select(row => new BookingSummaryDto(
+                row.Id,
+                row.HotelId,
+                row.HotelName,
+                row.Confirmation.Value,
+                row.Status.ToString(),
+                row.EarliestCheckIn,
+                row.LatestCheckOut,
+                row.Rooms,
+                row.Amount,
+                row.Currency,
+                row.CreatedAtUtc))
+        ];
+
+        return new PagedList<BookingSummaryDto>(items, paging.Page, paging.PageSize, totalCount);
+    }
+
     public async Task<BookingConfirmationDto?> GetConfirmationAsync(
         Guid bookingId,
         CancellationToken cancellationToken = default)

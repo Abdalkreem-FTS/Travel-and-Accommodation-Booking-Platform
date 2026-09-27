@@ -73,4 +73,20 @@ public sealed class UserService(
 
         return UserDto.From(user.Value);
     }
+
+    public async Task<Result<UserDto>> FindAsync(
+        UserSearchRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var email = Email.Create(request.Email);
+
+        if (email.IsError)
+        {
+            return email.Errors;
+        }
+
+        var user = await userRepository.GetByEmailAsync(email.Value, cancellationToken);
+
+        return user is null ? UserErrors.NotFound : UserDto.From(user);
+    }
 }

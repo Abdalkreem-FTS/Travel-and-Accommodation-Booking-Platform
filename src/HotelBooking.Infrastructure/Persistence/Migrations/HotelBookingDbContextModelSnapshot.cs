@@ -251,7 +251,8 @@ namespace HotelBooking.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("HotelId");
 
-                    b.HasIndex(new[] { "UserId" }, "IX_Bookings_UserId");
+                    b.HasIndex(new[] { "UserId", "CreatedAtUtc", "Id" }, "IX_Bookings_UserId_CreatedAtUtc_Id")
+                        .IsDescending(false, true, true);
 
                     b.HasIndex(new[] { "UserId" }, "IX_Bookings_UserId_Pending")
                         .IsUnique()
@@ -595,6 +596,10 @@ namespace HotelBooking.Infrastructure.Persistence.Migrations
                         .HasFilter("[IsDeleted] = 0");
 
                     SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("CityId", "StarRating"), new[] { "Name", "ThumbnailUrl" });
+
+                    b.HasIndex("CityId", "Name", "Id")
+                        .HasDatabaseName("IX_Hotels_CityId_Name_Id")
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Hotels", (string)null);
                 });

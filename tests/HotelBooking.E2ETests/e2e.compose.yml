@@ -1,0 +1,13 @@
+# Used only for the end-to-end tests. One run makes about seven login and register calls, and the
+# gateway allows ten per client per fifteen minutes, so a second run would meet 429s. This lifts
+# that limit on the gateway alone; nothing else changes.
+#
+#   docker compose -f docker-compose.yml -f tests/HotelBooking.E2ETests/e2e.compose.yml up -d gateway
+#   docker compose up -d gateway        # back to the real limit
+#
+# The main compose file is never edited.
+
+services:
+  gateway:
+    environment:
+      RateLimits__Auth__Permit: "1000"

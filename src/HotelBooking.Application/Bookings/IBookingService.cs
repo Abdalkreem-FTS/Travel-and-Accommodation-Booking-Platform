@@ -1,4 +1,5 @@
 using HotelBooking.Application.Bookings.Dtos;
+using HotelBooking.Application.Common;
 using HotelBooking.Domain.Results;
 
 namespace HotelBooking.Application.Bookings;
@@ -12,4 +13,9 @@ public interface IBookingService
         CancellationToken cancellationToken = default);
 
     Task<Result<BookingDto>> GetAsync(Guid bookingId, Guid userId, CancellationToken cancellationToken = default);
+
+    Task<Result<PagedList<BookingSummaryDto>>> ListAsync(
+        BookingListRequest request,
+        Guid userId,
+        CancellationToken cancellationToken = default);
 }

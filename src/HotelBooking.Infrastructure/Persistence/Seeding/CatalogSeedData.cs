@@ -22,9 +22,98 @@ internal static class CatalogSeedData
         new("301", RoomType.Luxury, Adults: 2, Children: 2, Baseline: 450m)
     ];
 
-    private static readonly string[] GalleryShots =
+    private static readonly Dictionary<string, string> CityPhotos = new()
+    {
+        ["amman"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Jabel_Amman.jpg/1280px-Jabel_Amman.jpg",
+        ["dubai"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Dubai_skyline_unsplash.jpg/1280px-Dubai_skyline_unsplash.jpg",
+        ["beirut"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Pigeons_Rock%2C_Raouch%C3%A9%2C_Beirut_%282007%29.jpg/1280px-Pigeons_Rock%2C_Raouch%C3%A9%2C_Beirut_%282007%29.jpg",
+        ["jeddah"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Old_Jeddah_%28Al_Balad%29%2C_Saudi_Arabia_in_November_2022.jpg/1280px-Old_Jeddah_%28Al_Balad%29%2C_Saudi_Arabia_in_November_2022.jpg",
+        ["marrakesh"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Koutoubia_Mosque_1.jpg/1280px-Koutoubia_Mosque_1.jpg",
+        ["cairo"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/View_from_Cairo_Tower_31march2007.jpg/1280px-View_from_Cairo_Tower_31march2007.jpg"
+    };
+
+    private static readonly Dictionary<string, string> HotelPhotos = new()
+    {
+        ["qasr-al-jabal"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Exterior_of_the_Midland_Hotel%2C_Manchester%2C_UK_03.jpg/1280px-Exterior_of_the_Midland_Hotel%2C_Manchester%2C_UK_03.jpg",
+        ["bayt-al-hijara"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/B2_Boutique_Hotel_%2B_Spa.jpg/1280px-B2_Boutique_Hotel_%2B_Spa.jpg",
+        ["qasr-abdoun"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/The_Swallow_Hotel_And_Attached_Front_Entrance_Balustrades.jpg/1280px-The_Swallow_Hotel_And_Attached_Front_Entrance_Balustrades.jpg",
+        ["nuzul-al-matar"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Hotel_Mater_Boni_Consilii_main_building_at_Huye.jpg/1280px-Hotel_Mater_Boni_Consilii_main_building_at_Huye.jpg",
+        ["lulu-al-marina"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Hurghada_Hotels_Three_Corners_18.jpg/1280px-Hurghada_Hotels_Three_Corners_18.jpg",
+        ["khan-deira"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Lebanon_hotel_swimming_pool.jpg/1280px-Lebanon_hotel_swimming_pool.jpg",
+        ["rimal-al-barsha"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Vista_Cay_Resort%2C_Orlando_May_2023_a_swimming_pool_%282%29.jpg/1280px-Vista_Cay_Resort%2C_Orlando_May_2023_a_swimming_pool_%282%29.jpg",
+        ["burj-al-wasat"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/The_WB_Abu_Dhabi%2C_Curio_Collection_By_Hilton_02.jpg/1280px-The_WB_Abu_Dhabi%2C_Curio_Collection_By_Hilton_02.jpg",
+        ["manarat-al-rawsha"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Ancien_grand_h%C3%B4tel_du_lac_%C3%A0_Hossegor.jpg/1280px-Ancien_grand_h%C3%B4tel_du_lac_%C3%A0_Hossegor.jpg",
+        ["bayt-al-hamra"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Grand_Hotel_Facade.JPG/1280px-Grand_Hotel_Facade.JPG",
+        ["nuzul-al-mina"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Hotel_facade%2C_Ibiza.jpg/1280px-Hotel_facade%2C_Ibiza.jpg",
+        ["dar-al-balad"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Hurghada_Hotels_Three_Corners_13.jpg/1280px-Hurghada_Hotels_Three_Corners_13.jpg",
+        ["shurfat-al-bahr"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Hurghada_Hotels_Three_Corners_19.jpg/1280px-Hurghada_Hotels_Three_Corners_19.jpg",
+        ["nuzul-al-hijaz"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Hurghada_Hotels_Three_Corners_2.jpg/1280px-Hurghada_Hotels_Three_Corners_2.jpg",
+        ["dar-al-kutubiyya"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Hotel_Plaza_lobby_in_Havana.JPG/1280px-Hotel_Plaza_lobby_in_Havana.JPG",
+        ["riad-al-bustan"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Marrakech_riad.jpg/1280px-Marrakech_riad.jpg",
+        ["qasr-al-nakhil"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Swimming_pool_of_the_Berbere_Palace_Hotel%2C_Ouarzazate%2C_Morocco.jpg/1280px-Swimming_pool_of_the_Berbere_Palace_Hotel%2C_Ouarzazate%2C_Morocco.jpg",
+        ["burj-al-nil"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Hotel_and_palm_trees_%28Unsplash%29.jpg/1280px-Hotel_and_palm_trees_%28Unsplash%29.jpg",
+        ["dar-al-zamalek"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Grand_Hotel_2010.jpg/1280px-Grand_Hotel_2010.jpg",
+        ["manzar-al-ahram"] =
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Africana_Hotel%2C_Egypt.jpg/1280px-Africana_Hotel%2C_Egypt.jpg"
+    };
+
+    private static readonly GalleryShot[] GalleryShots =
     [
-        "The entrance at dusk", "A double room", "The breakfast room", "The view from the top floor"
+        new("The entrance at dusk",
+        [
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Chateau_Frontenac_at_dusk_in_Quebec_City.jpg/1280px-Chateau_Frontenac_at_dusk_in_Quebec_City.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Beacon_Hotel_at_Night.jpg/1280px-Beacon_Hotel_at_Night.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Ch%C3%A2teau_Frontenac_Hotel%2C_Quebec.jpg/1280px-Ch%C3%A2teau_Frontenac_Hotel%2C_Quebec.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Grand_Hotel_Europe_NY_2008.JPG/1280px-Grand_Hotel_Europe_NY_2008.JPG"
+        ]),
+        new("A double room",
+        [
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Bed_in_hotel_room_2.jpg/1280px-Bed_in_hotel_room_2.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Bed_in_hotel_room_5.jpg/1280px-Bed_in_hotel_room_5.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Room_Hotel_Sofitel_Strasbourg.jpg/1280px-Room_Hotel_Sofitel_Strasbourg.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Room_Hotel_Sofitel_Strasbourg_307.jpg/1280px-Room_Hotel_Sofitel_Strasbourg_307.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Bed_at_Tianhe_Hotel_in_Shenzhen.jpg/1280px-Bed_at_Tianhe_Hotel_in_Shenzhen.jpg"
+        ]),
+        new("The breakfast room",
+        [
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Breakfast_room_in_Opera_Suite_Hotel_Yerevan_%28June_2023%29.JPG/1280px-Breakfast_room_in_Opera_Suite_Hotel_Yerevan_%28June_2023%29.JPG",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Breakfast-buffet-in-Brazilian-hotel_08_04_05_674000.jpeg/1280px-Breakfast-buffet-in-Brazilian-hotel_08_04_05_674000.jpeg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Argo_Hotel_interior_dining_room.jpg/1280px-Argo_Hotel_interior_dining_room.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Hurghada_Hotels_Three_Corners_5.jpg/1280px-Hurghada_Hotels_Three_Corners_5.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Hurghada_Hotels_Three_Corners_6.jpg/1280px-Hurghada_Hotels_Three_Corners_6.jpg"
+        ]),
+        new("The view from the top floor",
+        [
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Hotel_National%2C_Moscow._View_from_the_upper_floor_room_%28Unsplash%29.jpg/1280px-Hotel_National%2C_Moscow._View_from_the_upper_floor_room_%28Unsplash%29.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Amman_Night_Down_Town.JPG/1280px-Amman_Night_Down_Town.JPG",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/View_from_the_top_floor_of_SUST_IICT_Building.jpg/1280px-View_from_the_top_floor_of_SUST_IICT_Building.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Matanzas_Inlet_from_the_top_floor_of_Ft._Matanzas%2C_St._Augustine%2C_FL.jpg/1280px-Matanzas_Inlet_from_the_top_floor_of_Ft._Matanzas%2C_St._Augustine%2C_FL.jpg"
+        ])
     ];
 
     private static readonly string[] BaseAmenities = ["free-wifi", "parking", "air-conditioning"];
@@ -147,7 +236,7 @@ internal static class CatalogSeedData
         var ids = new Ids();
 
         var cities = CitySpecs.Select(spec => spec.ToCity(ids, nowUtc)).ToList();
-        var hotels = HotelSpecs.Select(spec => spec.ToHotel(ids, nowUtc)).ToList();
+        var hotels = HotelSpecs.Select((spec, index) => spec.ToHotel(ids, index, nowUtc)).ToList();
 
         var rooms = HotelSpecs
             .SelectMany(hotel => Layout.Select(template => template.ToRoom(ids, hotel, nowUtc)))
@@ -170,14 +259,11 @@ internal static class CatalogSeedData
 
     private static Guid HotelId(Ids ids, string slug) => ids.Of($"hotel:{slug}");
 
-    private static string Thumbnail(string slug) =>
-        $"https://picsum.photos/seed/{slug}/800/600";
-
-    private static IReadOnlyList<HotelImage> Gallery(string slug) =>
+    private static IReadOnlyList<HotelImage> Gallery(string slug, int hotelIndex) =>
     [
-        .. GalleryShots.Select((shot, index) => Required(
-            HotelImage.Create($"https://picsum.photos/seed/{slug}-{index + 1}/1600/1000", shot),
-            $"gallery image {index + 1} of {slug}"))
+        .. GalleryShots.Select(shot => Required(
+            HotelImage.Create(shot.Urls[hotelIndex % shot.Urls.Length], shot.Caption),
+            $"'{shot.Caption}' of {slug}"))
     ];
 
     private static IReadOnlyList<Guid> Amenities(int stars) =>
@@ -222,7 +308,7 @@ internal static class CatalogSeedData
                     Name,
                     Required(CountryCode.Create(Country), $"country {Country}"),
                     PostOffice,
-                    Thumbnail(Slug),
+                    CityPhotos[Slug],
                     nowUtc),
                 $"city {Name}");
     }
@@ -237,7 +323,7 @@ internal static class CatalogSeedData
         decimal Longitude,
         string Description)
     {
-        public Hotel ToHotel(Ids ids, DateTimeOffset nowUtc) =>
+        public Hotel ToHotel(Ids ids, int index, DateTimeOffset nowUtc) =>
             Required(
                 Hotel.Create(
                     HotelId(ids, Slug),
@@ -247,12 +333,14 @@ internal static class CatalogSeedData
                     Owner,
                     Required(StarRating.Create(Stars), $"star rating {Stars}"),
                     Required(GeoLocation.Create(Latitude, Longitude), $"location of {Name}"),
-                    Thumbnail(Slug),
+                    HotelPhotos[Slug],
                     nowUtc,
-                    Gallery(Slug),
+                    Gallery(Slug, index),
                     Amenities(Stars)),
                 $"hotel {Name}");
     }
+
+    private sealed record GalleryShot(string Caption, string[] Urls);
 
     private sealed record DealSpec(string HotelSlug, string RoomNumber, int Percentage)
     {

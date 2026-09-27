@@ -1672,6 +1672,10 @@
         {
           "type": "arrow",
           "id": "pspToGateway"
+        },
+        {
+          "type": "arrow",
+          "id": "web3"
         }
       ],
       "updated": 1,
@@ -2302,6 +2306,169 @@
       "fontFamily": 1,
       "textAlign": "left",
       "verticalAlign": "top",
+      "containerId": null,
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "web1",
+      "type": "rectangle",
+      "x": -440,
+      "y": 400,
+      "width": 200,
+      "height": 90,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "#d0ebff",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 73100211,
+      "version": 1,
+      "versionNonce": 73100212,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "web2"
+        },
+        {
+          "type": "arrow",
+          "id": "web3"
+        }
+      ],
+      "updated": 1,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "web2",
+      "type": "text",
+      "x": -389,
+      "y": 420,
+      "width": 98,
+      "height": 50,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 73100213,
+      "version": 1,
+      "versionNonce": 73100214,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "text": "Web (nginx)\nReact app",
+      "originalText": "Web (nginx)\nReact app",
+      "fontSize": 20,
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "web1",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "web3",
+      "type": "arrow",
+      "x": -140,
+      "y": 289,
+      "width": 150,
+      "height": 107,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 73100215,
+      "version": 1,
+      "versionNonce": 73100216,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -150,
+          107
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "gw1",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "web1",
+        "focus": 0,
+        "gap": 4
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "web4",
+      "type": "text",
+      "x": -350,
+      "y": 320,
+      "width": 118,
+      "height": 20,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 73100217,
+      "version": 1,
+      "versionNonce": 73100218,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "text": "every other path",
+      "originalText": "every other path",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "middle",
       "containerId": null,
       "lineHeight": 1.25,
       "autoResize": true

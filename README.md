@@ -1,8 +1,12 @@
-# Hotel Booking Platform — Backend
+# Hotel Booking Platform
 
 A REST backend for an online hotel booking platform. Guests search hotels, filter by dates and
 price, fill a cart, check out, pay on the payment provider's hosted page, and get a confirmation
 email. Admins manage cities, hotels, rooms and deals.
+
+The backend is the project. A small React frontend sits beside it so the whole flow can be clicked
+through in a browser; I built that part with Claude Code, and
+[The Frontend](#the-frontend-built-with-claude-code) explains how.
 
 The goal was never "the endpoints return 200". It was one sentence:
 
@@ -17,6 +21,7 @@ Everything below follows from that.
 - [Technology Stack](#technology-stack)
 - [Key Features](#key-features)
 - [System Architecture](#system-architecture)
+- [The Frontend (Built with Claude Code)](#the-frontend-built-with-claude-code)
 - [The Critical Path: Checkout](#the-critical-path-checkout)
 - [Database Design](#database-design)
 - [Indexes](#indexes)
@@ -54,6 +59,7 @@ Everything below follows from that.
 | **Docs** | OpenAPI + Scalar |
 | **Testing** | xunit.v3, Shouldly, NSubstitute, Testcontainers, NetArchTest |
 | **Gateway** | YARP reverse proxy — least-requests, active + passive health checks, rate limiting |
+| **Frontend** | React 19 + TypeScript, Vite, React Router, TanStack Query; served by nginx |
 | **Containerization** | Docker + Docker Compose |
 | **CI/CD** | GitHub Actions |
 
@@ -102,7 +108,7 @@ across three places, so every change touches all three. I've done that before. I
 
 ### Runtime shape
 
-![Runtime shape: a YARP gateway in front of three API instances, SQL Server, Redis, two workers, the payment provider and telemetry](diagrams/readme-02-runtime.svg)
+![Runtime shape: a YARP gateway in front of three API instances and the web frontend, SQL Server, Redis, two workers, the payment provider and telemetry](diagrams/readme-02-runtime.svg)
 
 <sub>Source: [`readme-02-runtime.excalidraw`](diagrams/readme-02-runtime.excalidraw) — open it at excalidraw.com to edit.</sub>
 
@@ -134,11 +140,13 @@ mid-traffic and you lose only its in-flight requests.
 
 ### The gateway
 
-Three API instances (`api-1`, `api-2`, `api-3`) sit behind a YARP gateway, which is the only one
-of them with a published port.
+Three API instances (`api-1`, `api-2`, `api-3`) and the React frontend (`web`) sit behind a YARP
+gateway, which is the only one of them with a published port. The browser sees one origin, so there
+is no CORS, and Stripe's return URL (`/bookings/{id}`) lands on the frontend.
 
 | Concern | How |
 | --- | --- |
+| **Routing** | `/api`, `/openapi`, `/scalar` and `/health/ready` go to the API; every other path goes to `web` (nginx serving the built app) |
 | **Balancing** | Least-requests, no session affinity. Checkout holds a transaction and search can miss the cache, so work is uneven and round-robin would keep feeding a busy instance |
 | **Active health** | Probes `/health/ready` every 5 s. An instance that loses SQL Server leaves rotation before a guest reaches it |
 | **Passive health** | An instance whose connections start failing is taken out for 30 s without waiting for the next probe |
@@ -151,6 +159,56 @@ and that single address is what the APIs believes.
 If `ForwardedHeaders__GatewayAddress` is not set, the API reads no forwarded headers at all. That is
 deliberate: with nothing to check a sender against, ASP.NET Core stops checking and believes every
 caller, so "not configured" has to mean "not forwarded".
+
+---
+
+## The Frontend (Built with Claude Code)
+
+I'm a backend developer. I know C#, SQL and distributed systems; I don't know React. I still
+wanted to show the whole thing working in a browser, so I used **Claude Code** to build the part I
+couldn't build myself, and kept the part I could.
+
+### Where it fits
+
+The frontend is a plain client of the public API. It gets nothing the API doesn't give everyone
+else:
+
+- **Same origin.** nginx serves the built app as the `web` container, behind the gateway. The
+  gateway sends `/api`, `/openapi`, `/scalar` and `/health/ready` to the API and every other path
+  to `web`, so the browser only ever sees `localhost:8080`. No CORS, and Stripe's return URL
+  (`/bookings/{id}`) lands on a real page.
+- **Stateless.** nginx serves static files and nothing else. It holds no session, so it adds no
+  state to the system and is rate limited by the gateway like any other path.
+- **No special access.** Tokens, the `Idempotency-Key`, the `ETag`/`If-Match` on admin edits and
+  every error `errorCode` work exactly as the [API Reference](#api-reference) describes. Hiding the
+  admin pages from guests is a convenience; the API's policies are what protect them.
+
+In development, `npm run dev` in `frontend/` starts Vite on `localhost:5173` and forwards `/api` to
+the gateway, so it runs against the same Docker stack.
+
+### How I used AI to build it
+
+I didn't ask for "a hotel booking UI". I wrote [`frontend/CLAUDE.md`](frontend/CLAUDE.md) first,
+and it set the terms:
+
+- **Pair programmer and teacher.** Plan the files first and wait for my OK, one page at a time, and
+  explain each new React idea (components, state, hooks, effects) against the C# I already know.
+- **The backend is mine.** Claude Code could read the backend code and the OpenAPI spec, never
+  change them. The spec was the source of truth for every field name.
+- **No workarounds.** When a page needed something the API didn't have, it stopped and wrote a
+  request in [`frontend/BACKEND_REQUESTS.md`](frontend/BACKEND_REQUESTS.md): what, why, the route,
+  the response shape and the error cases. I built each one in the backend under the backend's
+  own rules (tests, indexes, ProblemDetails), then it checked the spec and carried on. Seven
+  requests went through that loop, from routing `web` behind the gateway to `GET /bookings` for the
+  "My bookings" page.
+- **The hard parts, spelled out.** I named the four places a frontend can quietly break this API:
+  only one token refresh at a time across tabs (a reused refresh token revokes the session), one
+  `Idempotency-Key` per checkout attempt, polling a `Pending` booking until the webhook confirms
+  it, and sending the `ETag` back on admin saves.
+- **Ask before adding a package.** The whole app runs on React, React Router and TanStack Query.
+
+The result is a working client, not a showcase: it has no automated tests, and the backend's test
+suites are what this project's claims rest on.
 
 ---
 
@@ -534,14 +592,16 @@ cd Travel-and-Accommodation-Booking-Platform
 cp .env.example .env
 echo "JWT_SIGNING_KEY=$(openssl rand -base64 48)" >> .env
 echo "PAYMENT_WEBHOOK_SECRET=$(openssl rand -hex 32)" >> .env
+echo "SEED_ADMIN_PASSWORD=$(openssl rand -base64 18)" >> .env   # the admin account's password
 
 # 3. Start everything
 docker compose up -d --build
 ```
 
 That's it. `api-1` applies the migrations at startup, seeds a demo catalogue (6 cities, 20 hotels,
-80 rooms, 5 deals), and reports healthy. Then `api-2` and `api-3` start, the gateway starts once all
-three are healthy, and two workers (`hotelbooking-worker-1` and `-2`) begin draining the outbox and
+80 rooms, 5 deals) and an admin account (`SEED_ADMIN_EMAIL`, `admin@example.com` by default, with the
+password from `.env`), and reports healthy. Then `api-2` and `api-3` start, the gateway starts once all
+three are healthy and `web` has started, and two workers (`hotelbooking-worker-1` and `-2`) begin draining the outbox and
 settling unfinished payments.
 
 ```bash
@@ -563,6 +623,9 @@ TOKEN=$(curl -s -X POST http://localhost:8080/api/sessions \
 curl -s "http://localhost:8080/api/hotels?page=1&pageSize=5" | jq
 curl -s http://localhost:8080/api/cart -H "Authorization: Bearer $TOKEN" | jq
 ```
+
+Or open http://localhost:8080 and do the same in the browser. Sign in as the seeded admin to reach
+the admin pages.
 
 ### Paying with Stripe (Test Mode)
 
@@ -601,6 +664,7 @@ STRIPE_SECRET_KEY=sk_test_... tests/HotelBooking.Api.IntegrationTests/bin/Debug/
 
 | Service | URL | Notes |
 | --- | --- | --- |
+| **Frontend** | http://localhost:8080 | The React app, served by the `web` container through the gateway |
 | **API (through the gateway)** | http://localhost:8080/api | All routes are under `/api`. The API instances publish no port |
 | **Scalar API reference** | http://localhost:8080/scalar | Development only |
 | **OpenAPI document** | http://localhost:8080/openapi/v1.json | Development only |
@@ -625,6 +689,7 @@ STRIPE_SECRET_KEY=sk_test_... tests/HotelBooking.Api.IntegrationTests/bin/Debug/
 | `Email__Smtp__Host` | SMTP host (worker only; the API sends no email) | `mailpit` |
 | `PAYMENT_WEBHOOK_SECRET` | Signs events for the fake payment provider | `openssl rand -hex 32` |
 | `PAYMENT_PROVIDER` | `Fake` (default) or `Stripe` | `Fake` |
+| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | Development only: an admin created on startup. Either blank seeds none; the password follows the registration rules (12+ characters) | `admin@example.com` / `openssl rand -base64 18` |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Stripe **test-mode** key and the `whsec_` secret from `stripe listen`; live keys are refused at startup | `sk_test_…` / `whsec_…` |
 
 Secrets are never in `appsettings.json` — the committed file has empty placeholders so a missing
@@ -634,10 +699,10 @@ secret **fails loudly at startup** instead of quietly falling back to something 
 
 ## API Reference
 
-**37 routes**, one endpoint class per use case, all under `/api`.
+**41 routes**, one endpoint class per use case, all under `/api`.
 
 Authorization is **deny-by-default**: a fallback policy requires an authenticated user, and each
-public endpoint opts out explicitly. 13 routes are anonymous, 15 are admin-only, 9 need a signed-in
+public endpoint opts out explicitly. 13 routes are anonymous, 18 are admin-only, 10 need a signed-in
 guest. One of the anonymous thirteen is the payment webhook, which is trusted only when the
 provider's signature checks out.
 
@@ -649,6 +714,7 @@ provider's signature checks out.
 | `POST` | `/sessions` | anonymous | Log in — returns access + refresh token |
 | `PUT` | `/sessions/current` | anonymous | Rotate the refresh token |
 | `DELETE` | `/sessions/current` | guest | Log out — denylists the session |
+| `GET` | `/users?email=` | admin | Find a user by email (exact, case-insensitive) — to get the id the role routes take |
 | `PUT` | `/users/{userId}/roles/{role}` | admin | Grant a role |
 | `DELETE` | `/users/{userId}/roles/{role}` | admin | Revoke a role, ending every session of that user |
 
@@ -675,6 +741,7 @@ provider's signature checks out.
 | `DELETE` | `/cart/items/{itemId}` | guest | Remove one item |
 | `DELETE` | `/cart` | guest | Empty the cart |
 | `POST` | `/bookings` | guest | **Checkout** — reserves the nights and returns a hosted `checkoutUrl`; requires `Idempotency-Key` |
+| `GET` | `/bookings` | guest | Your bookings, newest first, every status — paged |
 | `GET` | `/bookings/{id}` | guest | The booking and its payment — poll it after the guest pays |
 | `POST` | `/bookings/{id}/cancellation` | guest | Cancel, releasing the nights and refunding a paid booking |
 | `POST` | `/payment-events` | provider-signed | The payment provider's webhook |
@@ -683,6 +750,10 @@ provider's signature checks out.
 
 `POST` / `PUT` / `DELETE` on `/cities`, `/hotels`, `/rooms`, `/deals`, plus
 `POST /hotels/{id}/rooms` and `GET /deals/{id}`. All admin-only, all `rowversion`-guarded.
+
+Two admin reads list what guest search hides: `GET /cities/{id}/hotels` (every hotel in a city,
+including ones with no rooms yet, with its `roomCount`) and `GET /rooms/{id}/deals` (every deal on a
+room — ended, running, upcoming, featured or not — each with the version a delete quotes).
 
 ### Errors
 
@@ -870,15 +941,15 @@ Health endpoints are excluded from tracing — a probe every 10 seconds would dr
 
 ## Testing
 
-121 tests across five suites. Each one proves something the others can't.
+131 tests across five suites. Each one proves something the others can't.
 
 | Suite | Tests | Proves |
 | --- | --- | --- |
 | **Domain unit** | 37 | Invariants, value objects and the payment state machine. No mocks — pure functions in, `Result` out |
 | **Application unit** | 28 | Orchestration: success, not-found, forbidden, conflict, validation |
-| **Integration** | 31 | Real SQL Server + Redis via Testcontainers, over the real HTTP route. Two of them call Stripe's test mode and run only when a test key is set |
+| **Integration** | 40 | Real SQL Server + Redis via Testcontainers, over the real HTTP route. Two of them call Stripe's test mode and run only when a test key is set |
 | **Architecture** | 23 | The dependency rule; Api and Workers never reference each other; the gateway references nothing; the API has no rate limiter |
-| **Gateway** | 2 | The gateway returns the trace id as `X-Request-Id`, and never throttles the payment webhook |
+| **Gateway** | 3 | The gateway returns the trace id as `X-Request-Id`, never throttles the payment webhook, and sends API paths to the API and every other path to the frontend |
 
 The test I care about most fires **50 concurrent checkouts for the same room on the same nights**
 and asserts exactly one 201, forty-nine 409s, no 5xx, that every loser got `Booking.RoomUnavailable`
@@ -974,21 +1045,29 @@ src/
 └── HotelBooking.Gateway/          # YARP in front of api-1..3; references no other project
     ├── RateLimiting/              # the only rate limiter in the system
     ├── Forwarding/  Problems/  Observability/
-    ├── appsettings.json           # routes, cluster, balancing, health checks
+    ├── appsettings.json           # routes, clusters (api, web), balancing, health checks
     ├── Dockerfile
     └── Program.cs
+
+frontend/                          # React + TypeScript app, built with Claude Code
+├── src/api/                       # every API call and its types; components never call fetch
+├── src/pages/                     # one folder or file per page, admin/ for the admin pages
+├── CLAUDE.md                      # the rules Claude Code worked under
+├── BACKEND_REQUESTS.md            # what the frontend asked the backend for, and what was built
+├── nginx.conf                     # static files, index.html for any unknown path
+└── Dockerfile                     # build with Node, serve with nginx
 
 tests/
 ├── HotelBooking.Domain.UnitTests/
 ├── HotelBooking.Application.UnitTests/
 ├── HotelBooking.Api.IntegrationTests/     # Testcontainers: SQL Server + Redis
 ├── HotelBooking.Architecture.Tests/       # NetArchTest
-└── HotelBooking.Gateway.IntegrationTests/ # request ids, and the webhook route never throttled
+└── HotelBooking.Gateway.IntegrationTests/ # request ids, the webhook route never throttled, the route table
 
 .github/workflows/    ci.yml, cd.yml
 load/                 k6 load tests: contention, browse, checkout, flood
 observability/        collector config, Prometheus config and alert rules
-docker-compose.yml    gateway + 3 API instances + 2 workers + SQL Server + Redis + Mailpit + the telemetry pipeline
+docker-compose.yml    gateway + 3 API instances + web + 2 workers + SQL Server + Redis + Mailpit + the telemetry pipeline
 ```
 
 ---
@@ -996,6 +1075,7 @@ docker-compose.yml    gateway + 3 API instances + 2 workers + SQL Server + Redis
 ## What I Didn't Build
 
 - **Live payments.** Stripe runs in test mode only, and a live key is refused at startup.
-- **Partial refunds or cancellation fees.** A cancelled paid booking is refunded in full.
+- **Partial refunds or cancellation fees.** A canceled paid booking is refunded in full.
 - **Grafana dashboards.**
+- **Frontend tests, or a frontend image in CI/CD.** The `web` image is built by Compose only.
 - **Flushing trending counters to SQL.**
