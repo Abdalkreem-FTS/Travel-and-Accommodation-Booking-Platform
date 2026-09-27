@@ -1,0 +1,54 @@
+/* The list of the user's bookings: one row each, the status and total on the right. */
+
+.my-bookings-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.my-booking {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+}
+
+.my-booking p {
+  margin: 0.25rem 0 0;
+}
+
+.my-booking-hotel {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.my-booking-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.booking-badge {
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.875rem;
+}
+
+.booking-badge-pending {
+  border-color: #b7791f;
+  background: #fffbeb;
+}
+
+.booking-badge-confirmed,
+.booking-badge-checkedin {
+  border-color: #1a7f37;
+  background: #effaf1;
+}

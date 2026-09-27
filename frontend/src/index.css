@@ -1,0 +1,170 @@
+/* Global styles for the whole app. Component-specific CSS goes next to the component. */
+
+:root {
+  --color-text: #1f2328;
+  --color-muted: #59636e;
+  --color-bg: #ffffff;
+  --color-surface: #f6f8fa;
+  --color-border: #d1d9e0;
+  --color-accent: #0b5cad;
+  --color-error: #b42318;
+  --color-error-bg: #fef3f2;
+
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+}
+
+a {
+  color: var(--color-accent);
+}
+
+button {
+  font: inherit;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.button-primary {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  /* Lets the email shrink instead of pushing the header wider than a phone screen. */
+  min-width: 0;
+}
+
+.user-email {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-muted);
+}
+
+.site-header-start {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  /* The links keep their width; on a phone the email shrinks instead. Without
+     this the links spill over the email, because the brand can't wrap. */
+  flex-shrink: 0;
+}
+
+.site-header-start nav {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.brand {
+  flex-shrink: 0;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--color-text);
+}
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.muted {
+  color: var(--color-muted);
+}
+
+.error-box {
+  padding: 1rem;
+  border: 1px solid var(--color-error);
+  border-radius: 6px;
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+/* Cards in a grid: hotels, deals and cities, on Home and in search results. */
+
+.card-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  /* As many 200px+ columns as fit: one on a phone, four or so on a laptop. */
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.card {
+  /* The badge is placed relative to the card. */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: inherit;
+  text-decoration: none;
+}
+
+.card:hover,
+.card:focus-visible {
+  border-color: var(--color-accent);
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem;
+}
+
+.thumbnail {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.thumbnail-empty {
+  background: var(--color-border);
+}
+
+.stars {
+  color: #b7791f;
+  letter-spacing: 0.1em;
+}

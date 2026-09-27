@@ -1,0 +1,4 @@
+.stay-details {
+  display: flex;
+  flex-direction: column;
+}

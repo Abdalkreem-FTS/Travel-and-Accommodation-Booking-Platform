@@ -1,0 +1,65 @@
+/* The cart: one box per hotel, its stays, then its total and Check out. */
+
+.cart-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.cart-group {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.cart-group h2 {
+  margin-top: 0;
+}
+
+.cart-items {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The stay on the left, its price and Remove on the right; stacked on a phone. */
+.cart-item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cart-item-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.cart-discount {
+  color: #1a7f37;
+}
+
+.cart-checkout {
+  margin-top: 1rem;
+}
+
+.cart-checkout p {
+  margin: 0 0 0.5rem;
+}
+
+.cart-total {
+  font-size: 1.125rem;
+}
+
+.cart-error {
+  color: var(--color-error);
+}
