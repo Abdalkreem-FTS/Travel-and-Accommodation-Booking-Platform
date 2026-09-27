@@ -536,13 +536,15 @@ cd Travel-and-Accommodation-Booking-Platform
 cp .env.example .env
 echo "JWT_SIGNING_KEY=$(openssl rand -base64 48)" >> .env
 echo "PAYMENT_WEBHOOK_SECRET=$(openssl rand -hex 32)" >> .env
+echo "SEED_ADMIN_PASSWORD=$(openssl rand -base64 18)" >> .env   # the admin account's password
 
 # 3. Start everything
 docker compose up -d --build
 ```
 
 That's it. `api-1` applies the migrations at startup, seeds a demo catalogue (6 cities, 20 hotels,
-80 rooms, 5 deals), and reports healthy. Then `api-2` and `api-3` start, the gateway starts once all
+80 rooms, 5 deals) and an admin account (`SEED_ADMIN_EMAIL`, `admin@example.com` by default, with the
+password from `.env`), and reports healthy. Then `api-2` and `api-3` start, the gateway starts once all
 three are healthy and `web` has started, and two workers (`hotelbooking-worker-1` and `-2`) begin draining the outbox and
 settling unfinished payments.
 
@@ -628,6 +630,7 @@ STRIPE_SECRET_KEY=sk_test_... tests/HotelBooking.Api.IntegrationTests/bin/Debug/
 | `Email__Smtp__Host` | SMTP host (worker only; the API sends no email) | `mailpit` |
 | `PAYMENT_WEBHOOK_SECRET` | Signs events for the fake payment provider | `openssl rand -hex 32` |
 | `PAYMENT_PROVIDER` | `Fake` (default) or `Stripe` | `Fake` |
+| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | Development only: an admin created on startup. Either blank seeds none; the password follows the registration rules (12+ characters) | `admin@example.com` / `openssl rand -base64 18` |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Stripe **test-mode** key and the `whsec_` secret from `stripe listen`; live keys are refused at startup | `sk_test_…` / `whsec_…` |
 
 Secrets are never in `appsettings.json` — the committed file has empty placeholders so a missing
@@ -637,10 +640,10 @@ secret **fails loudly at startup** instead of quietly falling back to something 
 
 ## API Reference
 
-**37 routes**, one endpoint class per use case, all under `/api`.
+**41 routes**, one endpoint class per use case, all under `/api`.
 
 Authorization is **deny-by-default**: a fallback policy requires an authenticated user, and each
-public endpoint opts out explicitly. 13 routes are anonymous, 15 are admin-only, 9 need a signed-in
+public endpoint opts out explicitly. 13 routes are anonymous, 18 are admin-only, 10 need a signed-in
 guest. One of the anonymous thirteen is the payment webhook, which is trusted only when the
 provider's signature checks out.
 
@@ -879,13 +882,13 @@ Health endpoints are excluded from tracing — a probe every 10 seconds would dr
 
 ## Testing
 
-130 tests across five suites. Each one proves something the others can't.
+131 tests across five suites. Each one proves something the others can't.
 
 | Suite | Tests | Proves |
 | --- | --- | --- |
 | **Domain unit** | 37 | Invariants, value objects and the payment state machine. No mocks — pure functions in, `Result` out |
 | **Application unit** | 28 | Orchestration: success, not-found, forbidden, conflict, validation |
-| **Integration** | 39 | Real SQL Server + Redis via Testcontainers, over the real HTTP route. Two of them call Stripe's test mode and run only when a test key is set |
+| **Integration** | 40 | Real SQL Server + Redis via Testcontainers, over the real HTTP route. Two of them call Stripe's test mode and run only when a test key is set |
 | **Architecture** | 23 | The dependency rule; Api and Workers never reference each other; the gateway references nothing; the API has no rate limiter |
 | **Gateway** | 3 | The gateway returns the trace id as `X-Request-Id`, never throttles the payment webhook, and sends API paths to the API and every other path to the frontend |
 

@@ -16,6 +16,8 @@ x-api: &api
     Payments__Provider: ${PAYMENT_PROVIDER:-Fake}
     Payments__Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}
     Payments__Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET:-}
+    Seed__Admin__Email: ${SEED_ADMIN_EMAIL:-}
+    Seed__Admin__Password: ${SEED_ADMIN_PASSWORD:-}
     OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
   depends_on:
     sqlserver: { condition: service_healthy }
