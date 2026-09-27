@@ -18,6 +18,7 @@ namespace HotelBooking.Application.Hotels;
 
 public sealed class HotelService(
     IHotelRepository hotelRepository,
+    IHotelQueries hotelQueries,
     ICityRepository cityRepository,
     IRoomRepository roomRepository,
     IAmenityQueries amenityQueries,
@@ -137,6 +138,30 @@ public sealed class HotelService(
         return hotel is null
             ? HotelErrors.NotFound
             : Result<IReadOnlyList<HotelImageDto>>.From([.. hotel.Images.Select(HotelImageDto.From)]);
+    }
+
+    public async Task<Result<PagedList<CityHotelDto>>> ListForCityAsync(
+        Guid cityId,
+        CityHotelsRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        List<Error> errors = [];
+
+        var paging = PageRequest.Read(request.Page, request.PageSize, errors);
+
+        if (errors.Count > 0)
+        {
+            return errors;
+        }
+
+        if (!await cityRepository.ExistsAsync(cityId, cancellationToken))
+        {
+            return CityErrors.NotFound;
+        }
+
+        var search = string.IsNullOrWhiteSpace(request.Search) ? null : request.Search.Trim();
+
+        return await hotelQueries.ListForCityAsync(cityId, search, paging, cancellationToken);
     }
 
     public async Task<Result<HotelDto>> UpdateAsync(

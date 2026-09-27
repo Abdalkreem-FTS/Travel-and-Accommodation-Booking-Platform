@@ -652,6 +652,7 @@ provider's signature checks out.
 | `POST` | `/sessions` | anonymous | Log in — returns access + refresh token |
 | `PUT` | `/sessions/current` | anonymous | Rotate the refresh token |
 | `DELETE` | `/sessions/current` | guest | Log out — denylists the session |
+| `GET` | `/users?email=` | admin | Find a user by email (exact, case-insensitive) — to get the id the role routes take |
 | `PUT` | `/users/{userId}/roles/{role}` | admin | Grant a role |
 | `DELETE` | `/users/{userId}/roles/{role}` | admin | Revoke a role, ending every session of that user |
 
@@ -687,6 +688,10 @@ provider's signature checks out.
 
 `POST` / `PUT` / `DELETE` on `/cities`, `/hotels`, `/rooms`, `/deals`, plus
 `POST /hotels/{id}/rooms` and `GET /deals/{id}`. All admin-only, all `rowversion`-guarded.
+
+Two admin reads list what guest search hides: `GET /cities/{id}/hotels` (every hotel in a city,
+including ones with no rooms yet, with its `roomCount`) and `GET /rooms/{id}/deals` (every deal on a
+room — ended, running, upcoming, featured or not — each with the version a delete quotes).
 
 ### Errors
 
@@ -874,13 +879,13 @@ Health endpoints are excluded from tracing — a probe every 10 seconds would dr
 
 ## Testing
 
-124 tests across five suites. Each one proves something the others can't.
+130 tests across five suites. Each one proves something the others can't.
 
 | Suite | Tests | Proves |
 | --- | --- | --- |
 | **Domain unit** | 37 | Invariants, value objects and the payment state machine. No mocks — pure functions in, `Result` out |
 | **Application unit** | 28 | Orchestration: success, not-found, forbidden, conflict, validation |
-| **Integration** | 33 | Real SQL Server + Redis via Testcontainers, over the real HTTP route. Two of them call Stripe's test mode and run only when a test key is set |
+| **Integration** | 39 | Real SQL Server + Redis via Testcontainers, over the real HTTP route. Two of them call Stripe's test mode and run only when a test key is set |
 | **Architecture** | 23 | The dependency rule; Api and Workers never reference each other; the gateway references nothing; the API has no rate limiter |
 | **Gateway** | 3 | The gateway returns the trace id as `X-Request-Id`, never throttles the payment webhook, and sends API paths to the API and every other path to the frontend |
 

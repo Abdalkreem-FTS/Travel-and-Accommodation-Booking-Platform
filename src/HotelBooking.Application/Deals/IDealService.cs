@@ -1,3 +1,4 @@
+using HotelBooking.Application.Common;
 using HotelBooking.Application.Deals.Dtos;
 using HotelBooking.Domain.Results;
 
@@ -14,6 +15,11 @@ public interface IDealService
         CancellationToken cancellationToken = default);
 
     Task<Result<DealDto>> GetAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<Result<PagedList<DealDto>>> ListForRoomAsync(
+        Guid roomId,
+        RoomDealsRequest request,
+        CancellationToken cancellationToken = default);
 
     Task<Result<DealDto>> UpdateAsync(
         Guid id,

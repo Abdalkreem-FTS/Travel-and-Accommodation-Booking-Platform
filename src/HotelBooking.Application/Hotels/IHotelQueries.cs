@@ -12,4 +12,10 @@ public interface IHotelQueries
     Task<IReadOnlyList<HotelSummaryDto>> ListCardsAsync(
         IReadOnlyList<Guid> hotelIds,
         CancellationToken cancellationToken = default);
+
+    Task<PagedList<CityHotelDto>> ListForCityAsync(
+        Guid cityId,
+        string? search,
+        PageRequest paging,
+        CancellationToken cancellationToken = default);
 }
