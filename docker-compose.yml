@@ -61,6 +61,7 @@ services:
       ReverseProxy__Clusters__api__Destinations__api-1__Address: http://api-1:8080
       ReverseProxy__Clusters__api__Destinations__api-2__Address: http://api-2:8080
       ReverseProxy__Clusters__api__Destinations__api-3__Address: http://api-3:8080
+      ReverseProxy__Clusters__web__Destinations__web-1__Address: http://web:80
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     ports: ["8080:8080"]
     networks:
@@ -70,12 +71,20 @@ services:
       api-1: { condition: service_healthy }
       api-2: { condition: service_healthy }
       api-3: { condition: service_healthy }
+      web: { condition: service_started }
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/live || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 6
       start_period: 10s
+
+  # The React app, served by nginx. No published port: the gateway sends every path outside
+  # /api, /openapi, /scalar and /health/ready here.
+  web:
+    build: ./frontend
+    image: hotelbooking-web:local
+    container_name: hotelbooking-web
 
   worker:
     build:

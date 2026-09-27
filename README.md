@@ -134,11 +134,13 @@ mid-traffic and you lose only its in-flight requests.
 
 ### The gateway
 
-Three API instances (`api-1`, `api-2`, `api-3`) sit behind a YARP gateway, which is the only one
-of them with a published port.
+Three API instances (`api-1`, `api-2`, `api-3`) and the React frontend (`web`) sit behind a YARP
+gateway, which is the only one of them with a published port. The browser sees one origin, so there
+is no CORS, and Stripe's return URL (`/bookings/{id}`) lands on the frontend.
 
 | Concern | How |
 | --- | --- |
+| **Routing** | `/api`, `/openapi`, `/scalar` and `/health/ready` go to the API; every other path goes to `web` (nginx serving the built app) |
 | **Balancing** | Least-requests, no session affinity. Checkout holds a transaction and search can miss the cache, so work is uneven and round-robin would keep feeding a busy instance |
 | **Active health** | Probes `/health/ready` every 5 s. An instance that loses SQL Server leaves rotation before a guest reaches it |
 | **Passive health** | An instance whose connections start failing is taken out for 30 s without waiting for the next probe |
@@ -541,7 +543,7 @@ docker compose up -d --build
 
 That's it. `api-1` applies the migrations at startup, seeds a demo catalogue (6 cities, 20 hotels,
 80 rooms, 5 deals), and reports healthy. Then `api-2` and `api-3` start, the gateway starts once all
-three are healthy, and two workers (`hotelbooking-worker-1` and `-2`) begin draining the outbox and
+three are healthy and `web` has started, and two workers (`hotelbooking-worker-1` and `-2`) begin draining the outbox and
 settling unfinished payments.
 
 ```bash
@@ -601,6 +603,7 @@ STRIPE_SECRET_KEY=sk_test_... tests/HotelBooking.Api.IntegrationTests/bin/Debug/
 
 | Service | URL | Notes |
 | --- | --- | --- |
+| **Frontend** | http://localhost:8080 | The React app, served by the `web` container through the gateway |
 | **API (through the gateway)** | http://localhost:8080/api | All routes are under `/api`. The API instances publish no port |
 | **Scalar API reference** | http://localhost:8080/scalar | Development only |
 | **OpenAPI document** | http://localhost:8080/openapi/v1.json | Development only |
@@ -870,7 +873,7 @@ Health endpoints are excluded from tracing — a probe every 10 seconds would dr
 
 ## Testing
 
-121 tests across five suites. Each one proves something the others can't.
+122 tests across five suites. Each one proves something the others can't.
 
 | Suite | Tests | Proves |
 | --- | --- | --- |
@@ -878,7 +881,7 @@ Health endpoints are excluded from tracing — a probe every 10 seconds would dr
 | **Application unit** | 28 | Orchestration: success, not-found, forbidden, conflict, validation |
 | **Integration** | 31 | Real SQL Server + Redis via Testcontainers, over the real HTTP route. Two of them call Stripe's test mode and run only when a test key is set |
 | **Architecture** | 23 | The dependency rule; Api and Workers never reference each other; the gateway references nothing; the API has no rate limiter |
-| **Gateway** | 2 | The gateway returns the trace id as `X-Request-Id`, and never throttles the payment webhook |
+| **Gateway** | 3 | The gateway returns the trace id as `X-Request-Id`, never throttles the payment webhook, and sends API paths to the API and every other path to the frontend |
 
 The test I care about most fires **50 concurrent checkouts for the same room on the same nights**
 and asserts exactly one 201, forty-nine 409s, no 5xx, that every loser got `Booking.RoomUnavailable`
@@ -974,7 +977,7 @@ src/
 └── HotelBooking.Gateway/          # YARP in front of api-1..3; references no other project
     ├── RateLimiting/              # the only rate limiter in the system
     ├── Forwarding/  Problems/  Observability/
-    ├── appsettings.json           # routes, cluster, balancing, health checks
+    ├── appsettings.json           # routes, clusters (api, web), balancing, health checks
     ├── Dockerfile
     └── Program.cs
 
@@ -983,12 +986,12 @@ tests/
 ├── HotelBooking.Application.UnitTests/
 ├── HotelBooking.Api.IntegrationTests/     # Testcontainers: SQL Server + Redis
 ├── HotelBooking.Architecture.Tests/       # NetArchTest
-└── HotelBooking.Gateway.IntegrationTests/ # request ids, and the webhook route never throttled
+└── HotelBooking.Gateway.IntegrationTests/ # request ids, the webhook route never throttled, the route table
 
 .github/workflows/    ci.yml, cd.yml
 load/                 k6 load tests: contention, browse, checkout, flood
 observability/        collector config, Prometheus config and alert rules
-docker-compose.yml    gateway + 3 API instances + 2 workers + SQL Server + Redis + Mailpit + the telemetry pipeline
+docker-compose.yml    gateway + 3 API instances + web + 2 workers + SQL Server + Redis + Mailpit + the telemetry pipeline
 ```
 
 ---
