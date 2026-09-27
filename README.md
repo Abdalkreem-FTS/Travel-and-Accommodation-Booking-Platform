@@ -1,8 +1,12 @@
-# Hotel Booking Platform — Backend
+# Hotel Booking Platform
 
 A REST backend for an online hotel booking platform. Guests search hotels, filter by dates and
 price, fill a cart, check out, pay on the payment provider's hosted page, and get a confirmation
 email. Admins manage cities, hotels, rooms and deals.
+
+The backend is the project. A small React frontend sits beside it so the whole flow can be clicked
+through in a browser; I built that part with Claude Code, and
+[The Frontend](#the-frontend-built-with-claude-code) explains how.
 
 The goal was never "the endpoints return 200". It was one sentence:
 
@@ -17,6 +21,7 @@ Everything below follows from that.
 - [Technology Stack](#technology-stack)
 - [Key Features](#key-features)
 - [System Architecture](#system-architecture)
+- [The Frontend (Built with Claude Code)](#the-frontend-built-with-claude-code)
 - [The Critical Path: Checkout](#the-critical-path-checkout)
 - [Database Design](#database-design)
 - [Indexes](#indexes)
@@ -54,6 +59,7 @@ Everything below follows from that.
 | **Docs** | OpenAPI + Scalar |
 | **Testing** | xunit.v3, Shouldly, NSubstitute, Testcontainers, NetArchTest |
 | **Gateway** | YARP reverse proxy — least-requests, active + passive health checks, rate limiting |
+| **Frontend** | React 19 + TypeScript, Vite, React Router, TanStack Query; served by nginx |
 | **Containerization** | Docker + Docker Compose |
 | **CI/CD** | GitHub Actions |
 
@@ -102,7 +108,7 @@ across three places, so every change touches all three. I've done that before. I
 
 ### Runtime shape
 
-![Runtime shape: a YARP gateway in front of three API instances, SQL Server, Redis, two workers, the payment provider and telemetry](diagrams/readme-02-runtime.svg)
+![Runtime shape: a YARP gateway in front of three API instances and the web frontend, SQL Server, Redis, two workers, the payment provider and telemetry](diagrams/readme-02-runtime.svg)
 
 <sub>Source: [`readme-02-runtime.excalidraw`](diagrams/readme-02-runtime.excalidraw) — open it at excalidraw.com to edit.</sub>
 
@@ -153,6 +159,56 @@ and that single address is what the APIs believes.
 If `ForwardedHeaders__GatewayAddress` is not set, the API reads no forwarded headers at all. That is
 deliberate: with nothing to check a sender against, ASP.NET Core stops checking and believes every
 caller, so "not configured" has to mean "not forwarded".
+
+---
+
+## The Frontend (Built with Claude Code)
+
+I'm a backend developer. I know C#, SQL and distributed systems; I don't know React. I still
+wanted to show the whole thing working in a browser, so I used **Claude Code** to build the part I
+couldn't build myself, and kept the part I could.
+
+### Where it fits
+
+The frontend is a plain client of the public API. It gets nothing the API doesn't give everyone
+else:
+
+- **Same origin.** nginx serves the built app as the `web` container, behind the gateway. The
+  gateway sends `/api`, `/openapi`, `/scalar` and `/health/ready` to the API and every other path
+  to `web`, so the browser only ever sees `localhost:8080`. No CORS, and Stripe's return URL
+  (`/bookings/{id}`) lands on a real page.
+- **Stateless.** nginx serves static files and nothing else. It holds no session, so it adds no
+  state to the system and is rate limited by the gateway like any other path.
+- **No special access.** Tokens, the `Idempotency-Key`, the `ETag`/`If-Match` on admin edits and
+  every error `errorCode` work exactly as the [API Reference](#api-reference) describes. Hiding the
+  admin pages from guests is a convenience; the API's policies are what protect them.
+
+In development, `npm run dev` in `frontend/` starts Vite on `localhost:5173` and forwards `/api` to
+the gateway, so it runs against the same Docker stack.
+
+### How I used AI to build it
+
+I didn't ask for "a hotel booking UI". I wrote [`frontend/CLAUDE.md`](frontend/CLAUDE.md) first,
+and it set the terms:
+
+- **Pair programmer and teacher.** Plan the files first and wait for my OK, one page at a time, and
+  explain each new React idea (components, state, hooks, effects) against the C# I already know.
+- **The backend is mine.** Claude Code could read the backend code and the OpenAPI spec, never
+  change them. The spec was the source of truth for every field name.
+- **No workarounds.** When a page needed something the API didn't have, it stopped and wrote a
+  request in [`frontend/BACKEND_REQUESTS.md`](frontend/BACKEND_REQUESTS.md): what, why, the route,
+  the response shape and the error cases. I built each one in the backend under the backend's
+  own rules (tests, indexes, ProblemDetails), then it checked the spec and carried on. Seven
+  requests went through that loop, from routing `web` behind the gateway to `GET /bookings` for the
+  "My bookings" page.
+- **The hard parts, spelled out.** I named the four places a frontend can quietly break this API:
+  only one token refresh at a time across tabs (a reused refresh token revokes the session), one
+  `Idempotency-Key` per checkout attempt, polling a `Pending` booking until the webhook confirms
+  it, and sending the `ETag` back on admin saves.
+- **Ask before adding a package.** The whole app runs on React, React Router and TanStack Query.
+
+The result is a working client, not a showcase: it has no automated tests, and the backend's test
+suites are what this project's claims rest on.
 
 ---
 
@@ -567,6 +623,9 @@ TOKEN=$(curl -s -X POST http://localhost:8080/api/sessions \
 curl -s "http://localhost:8080/api/hotels?page=1&pageSize=5" | jq
 curl -s http://localhost:8080/api/cart -H "Authorization: Bearer $TOKEN" | jq
 ```
+
+Or open http://localhost:8080 and do the same in the browser. Sign in as the seeded admin to reach
+the admin pages.
 
 ### Paying with Stripe (Test Mode)
 
@@ -990,6 +1049,14 @@ src/
     ├── Dockerfile
     └── Program.cs
 
+frontend/                          # React + TypeScript app, built with Claude Code
+├── src/api/                       # every API call and its types; components never call fetch
+├── src/pages/                     # one folder or file per page, admin/ for the admin pages
+├── CLAUDE.md                      # the rules Claude Code worked under
+├── BACKEND_REQUESTS.md            # what the frontend asked the backend for, and what was built
+├── nginx.conf                     # static files, index.html for any unknown path
+└── Dockerfile                     # build with Node, serve with nginx
+
 tests/
 ├── HotelBooking.Domain.UnitTests/
 ├── HotelBooking.Application.UnitTests/
@@ -1010,4 +1077,5 @@ docker-compose.yml    gateway + 3 API instances + web + 2 workers + SQL Server +
 - **Live payments.** Stripe runs in test mode only, and a live key is refused at startup.
 - **Partial refunds or cancellation fees.** A cancelled paid booking is refunded in full.
 - **Grafana dashboards.**
+- **Frontend tests, or a frontend image in CI/CD.** The `web` image is built by Compose only.
 - **Flushing trending counters to SQL.**
