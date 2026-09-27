@@ -678,6 +678,7 @@ provider's signature checks out.
 | `DELETE` | `/cart/items/{itemId}` | guest | Remove one item |
 | `DELETE` | `/cart` | guest | Empty the cart |
 | `POST` | `/bookings` | guest | **Checkout** — reserves the nights and returns a hosted `checkoutUrl`; requires `Idempotency-Key` |
+| `GET` | `/bookings` | guest | Your bookings, newest first, every status — paged |
 | `GET` | `/bookings/{id}` | guest | The booking and its payment — poll it after the guest pays |
 | `POST` | `/bookings/{id}/cancellation` | guest | Cancel, releasing the nights and refunding a paid booking |
 | `POST` | `/payment-events` | provider-signed | The payment provider's webhook |
@@ -873,13 +874,13 @@ Health endpoints are excluded from tracing — a probe every 10 seconds would dr
 
 ## Testing
 
-122 tests across five suites. Each one proves something the others can't.
+124 tests across five suites. Each one proves something the others can't.
 
 | Suite | Tests | Proves |
 | --- | --- | --- |
 | **Domain unit** | 37 | Invariants, value objects and the payment state machine. No mocks — pure functions in, `Result` out |
 | **Application unit** | 28 | Orchestration: success, not-found, forbidden, conflict, validation |
-| **Integration** | 31 | Real SQL Server + Redis via Testcontainers, over the real HTTP route. Two of them call Stripe's test mode and run only when a test key is set |
+| **Integration** | 33 | Real SQL Server + Redis via Testcontainers, over the real HTTP route. Two of them call Stripe's test mode and run only when a test key is set |
 | **Architecture** | 23 | The dependency rule; Api and Workers never reference each other; the gateway references nothing; the API has no rate limiter |
 | **Gateway** | 3 | The gateway returns the trace id as `X-Request-Id`, never throttles the payment webhook, and sends API paths to the API and every other path to the frontend |
 

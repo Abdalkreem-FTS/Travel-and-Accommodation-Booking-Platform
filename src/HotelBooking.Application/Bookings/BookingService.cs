@@ -22,6 +22,7 @@ namespace HotelBooking.Application.Bookings;
 
 public sealed class BookingService(
     IBookingRepository bookingRepository,
+    IBookingQueries bookingQueries,
     IPaymentRepository paymentRepository,
     IRoomRepository roomRepository,
     IDealRepository dealRepository,
@@ -74,6 +75,23 @@ public sealed class BookingService(
         var payment = await paymentRepository.GetForBookingAsync(bookingId, cancellationToken);
 
         return BookingDto.From(booking, payment);
+    }
+
+    public async Task<Result<PagedList<BookingSummaryDto>>> ListAsync(
+        BookingListRequest request,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        List<Error> errors = [];
+
+        var paging = PageRequest.Read(request.Page, request.PageSize, errors);
+
+        if (errors.Count > 0)
+        {
+            return errors;
+        }
+
+        return await bookingQueries.ListForUserAsync(userId, paging, cancellationToken);
     }
 
     private static string Outcome(Result<BookingDto> result) =>

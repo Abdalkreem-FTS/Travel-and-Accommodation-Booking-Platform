@@ -66,7 +66,10 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .HasConversion<int>()
             .IsRequired();
 
-        builder.HasIndex(booking => booking.UserId, "IX_Bookings_UserId");
+        builder.HasIndex(
+                booking => new { booking.UserId, booking.CreatedAtUtc, booking.Id },
+                "IX_Bookings_UserId_CreatedAtUtc_Id")
+            .IsDescending(false, true, true);
 
         builder.HasIndex(booking => booking.UserId, "IX_Bookings_UserId_Pending")
             .IsUnique()
