@@ -527,7 +527,7 @@ Docker and Docker Compose. Nothing else — no SQL Server, Redis, SMTP or .NET S
 
 ```bash
 # 1. Clone
-git clone <repository-url>
+git clone https://github.com/Abdalkreem-FTS/Travel-and-Accommodation-Booking-Platform.git
 cd Travel-and-Accommodation-Booking-Platform
 
 # 2. Set the secrets
@@ -920,13 +920,15 @@ the run when a threshold is crossed. How to run them: [`load/README.md`](load/RE
 
 ### CD — after CI goes green on `main`
 
-Builds all three images and pushes them to **GitHub Container Registry**, tagged `latest` and the
-commit SHA:
+Builds all three images and pushes them to **Docker Hub**, tagged `latest` and the commit SHA:
 
 ```
-ghcr.io/<owner>/hotelbooking-api:latest      ghcr.io/<owner>/hotelbooking-worker:latest      ghcr.io/<owner>/hotelbooking-gateway:latest
-ghcr.io/<owner>/hotelbooking-api:<sha>       ghcr.io/<owner>/hotelbooking-worker:<sha>       ghcr.io/<owner>/hotelbooking-gateway:<sha>
+abdalkreemfts/hotelbooking-api:latest      abdalkreemfts/hotelbooking-worker:latest      abdalkreemfts/hotelbooking-gateway:latest
+abdalkreemfts/hotelbooking-api:<sha>       abdalkreemfts/hotelbooking-worker:<sha>       abdalkreemfts/hotelbooking-gateway:<sha>
 ```
+
+It signs in with the repository variable `DOCKERHUB_USERNAME` and the secret `DOCKERHUB_TOKEN`
+(a Docker Hub access token with Read & Write scope).
 
 ---
 
