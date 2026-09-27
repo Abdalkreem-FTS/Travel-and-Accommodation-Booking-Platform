@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HotelBooking.Api/HotelBooking.Api.csproj" />
+    <Project Path="src/HotelBooking.Application/HotelBooking.Application.csproj" />
+    <Project Path="src/HotelBooking.Domain/HotelBooking.Domain.csproj" />
+    <Project Path="src/HotelBooking.Gateway/HotelBooking.Gateway.csproj" />
+    <Project Path="src/HotelBooking.Infrastructure/HotelBooking.Infrastructure.csproj" />
+    <Project Path="src/HotelBooking.Workers/HotelBooking.Workers.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HotelBooking.Api.IntegrationTests/HotelBooking.Api.IntegrationTests.csproj" />
+    <Project Path="tests/HotelBooking.Application.UnitTests/HotelBooking.Application.UnitTests.csproj" />
+    <Project Path="tests/HotelBooking.Architecture.Tests/HotelBooking.Architecture.Tests.csproj" />
+    <Project Path="tests/HotelBooking.Domain.UnitTests/HotelBooking.Domain.UnitTests.csproj" />
+    <Project Path="tests/HotelBooking.Gateway.IntegrationTests/HotelBooking.Gateway.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

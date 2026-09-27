@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="NetArchTest.Rules" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/HotelBooking.Domain/HotelBooking.Domain.csproj" />
+    <ProjectReference Include="../../src/HotelBooking.Application/HotelBooking.Application.csproj" />
+    <ProjectReference Include="../../src/HotelBooking.Infrastructure/HotelBooking.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/HotelBooking.Api/HotelBooking.Api.csproj" />
+    <ProjectReference Include="../../src/HotelBooking.Workers/HotelBooking.Workers.csproj" />
+    <ProjectReference Include="../../src/HotelBooking.Gateway/HotelBooking.Gateway.csproj" />
+  </ItemGroup>
+
+</Project>

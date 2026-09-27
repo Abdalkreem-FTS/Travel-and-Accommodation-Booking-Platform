@@ -1,0 +1,40 @@
+receivers:
+  otlp:
+    protocols:
+      grpc: { endpoint: 0.0.0.0:4317 }
+      http: { endpoint: 0.0.0.0:4318 }
+
+processors:
+  batch: { timeout: 5s, send_batch_size: 512 }
+  memory_limiter: { check_interval: 1s, limit_mib: 256 }
+  attributes/scrub:
+    actions:
+      - { pattern: ^db\.query\.parameter\..*$, action: delete }
+      - { key: http.request.header.authorization, action: delete }
+
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls: { insecure: true }
+  otlphttp/seq:
+    endpoint: http://seq:5341/ingest/otlp
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    resource_to_telemetry_conversion: { enabled: true }  
+
+service:
+  telemetry:
+    logs: { level: info }
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/scrub, batch]
+      exporters: [otlp/jaeger]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/scrub, batch]
+      exporters: [otlphttp/seq]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
