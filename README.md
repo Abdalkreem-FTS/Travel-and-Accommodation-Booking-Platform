@@ -1075,7 +1075,7 @@ docker-compose.yml    gateway + 3 API instances + web + 2 workers + SQL Server +
 ## What I Didn't Build
 
 - **Live payments.** Stripe runs in test mode only, and a live key is refused at startup.
-- **Partial refunds or cancellation fees.** A cancelled paid booking is refunded in full.
+- **Partial refunds or cancellation fees.** A canceled paid booking is refunded in full.
 - **Grafana dashboards.**
 - **Frontend tests, or a frontend image in CI/CD.** The `web` image is built by Compose only.
 - **Flushing trending counters to SQL.**
