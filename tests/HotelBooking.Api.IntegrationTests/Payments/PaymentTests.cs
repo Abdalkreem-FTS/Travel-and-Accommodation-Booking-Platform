@@ -104,11 +104,11 @@ public sealed class PaymentTests(ApiFactory factory) : IntegrationTestBase(facto
     [InlineData(3)]
     public async Task ExpireOverdue_RacingThePaymentEvent_NeverKeepsMoneyForNightsTheGuestDoesNotHold(int attempt)
     {
-        const int Checkouts = 5;
+        const int checkouts = 5;
 
         var roomId = await ARoomAsync();
 
-        for (var guest = 0; guest < Checkouts; guest++)
+        for (var guest = 0; guest < checkouts; guest++)
         {
             var session = await SignUpAndLogInAsync($"guest-{guest}@example.com");
             var checkout = await CheckOutAsync(session.AccessToken, roomId, startingIn: 30 + (guest * 5));

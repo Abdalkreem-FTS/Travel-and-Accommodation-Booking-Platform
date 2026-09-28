@@ -5,8 +5,9 @@ using static Microsoft.Playwright.Assertions;
 
 namespace HotelBooking.E2ETests;
 
-// Needs E2E_SQL_CONNECTION: no endpoint grants the first admin, so the test writes the role row
-// itself, the same way the demo does.
+// No endpoint grants the first admin, so the test writes the role row itself, the same way the demo
+// does. Against the local stack it connects with the sa password from .env; any other stack needs
+// E2E_SQL_CONNECTION.
 [Trait("Category", "E2E")]
 public sealed class AdminHotelEditTests(BrowserFixture browser)
 {
@@ -44,7 +45,8 @@ public sealed class AdminHotelEditTests(BrowserFixture browser)
     private static async Task GrantAdminAsync(string email)
     {
         var connectionString = Environment.GetEnvironmentVariable("E2E_SQL_CONNECTION")
-            ?? throw new InvalidOperationException("Set E2E_SQL_CONNECTION to the compose SQL Server's connection string.");
+            ?? (BrowserFixture.UsesLocalStack ? LocalStackConnectionString() : null)
+            ?? throw new InvalidOperationException("Set E2E_SQL_CONNECTION to the stack's SQL Server connection string.");
 
         await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync(Token);
@@ -55,5 +57,15 @@ public sealed class AdminHotelEditTests(BrowserFixture browser)
         command.Parameters.AddWithValue("@email", email);
 
         (await command.ExecuteNonQueryAsync(Token)).ShouldBe(1, $"exactly one user should have the email {email}");
+    }
+
+    private static string LocalStackConnectionString()
+    {
+        const string key = "MSSQL_SA_PASSWORD=";
+        var password = File.ReadLines(Path.Combine(BrowserFixture.RepositoryRoot(), ".env"))
+            .FirstOrDefault(line => line.StartsWith(key, StringComparison.Ordinal))?[key.Length..]
+            ?? throw new InvalidOperationException("MSSQL_SA_PASSWORD is missing from .env.");
+
+        return $"Server=localhost,1433;Database=HotelBooking;User Id=sa;Password={password};TrustServerCertificate=True";
     }
 }

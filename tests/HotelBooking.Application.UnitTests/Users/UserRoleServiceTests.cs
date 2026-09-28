@@ -57,7 +57,7 @@ public sealed class UserRoleServiceTests
         var result = await _service.RevokeAsync(AdminId, "Admin", AdminId, Token);
 
         result.TopError.ShouldBe(UserErrors.CannotChangeYourOwnRoles);
-        await _users.DidNotReceiveWithAnyArgs().GetByIdAsync(default, Token);
+        await _users.DidNotReceiveWithAnyArgs().GetByIdAsync(Guid.Empty, Token);
     }
 
     [Fact]
@@ -92,6 +92,6 @@ public sealed class UserRoleServiceTests
         var result = await _service.GrantAsync(UserId, role, Token);
 
         result.TopError.ShouldBe(UserErrors.UnknownRole);
-        await _users.DidNotReceiveWithAnyArgs().GetByIdAsync(default, Token);
+        await _users.DidNotReceiveWithAnyArgs().GetByIdAsync(Guid.Empty, Token);
     }
 }

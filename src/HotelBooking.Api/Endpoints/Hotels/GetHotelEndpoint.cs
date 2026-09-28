@@ -19,7 +19,9 @@ public sealed class GetHotelEndpoint : IEndpoint
             {
                 var viewerId = user.Identity?.IsAuthenticated is true ? user.GetUserId() : (Guid?)null;
 
-                var result = await hotelService.GetAsync(id, viewerId, cancellationToken);
+                var clientAddress = response.HttpContext.Connection.RemoteIpAddress?.ToString();
+
+                var result = await hotelService.GetAsync(id, viewerId, clientAddress, cancellationToken);
 
                 return result.Match(
                     hotel => VersionedResults.Ok(response, hotel, hotel.Version),
@@ -39,7 +41,9 @@ public sealed class GetHotelEndpoint : IEndpoint
                 + "edits the hotel — so the `ETag` here is always one `If-Match` will accept."
                 + "\n\n"
                 + "Reading a hotel counts as a visit: it raises its city in the trending ranking "
-                + "behind `GET /cities?sort=trending`, and for a signed-in caller it moves the "
+                + "behind `GET /cities?sort=trending` — once per visitor per city per UTC day, the "
+                + "visitor being the signed-in user or else the client address — and for a "
+                + "signed-in caller it moves the "
                 + "hotel to the front of `GET /viewed-hotels`. The counters live in Redis and are "
                 + "best-effort — a hotel still reads normally when they cannot be written.")
             .Produces<HotelDto>()

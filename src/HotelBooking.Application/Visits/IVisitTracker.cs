@@ -6,6 +6,7 @@ public interface IVisitTracker
         Guid hotelId,
         Guid cityId,
         Guid? viewerId,
+        string? clientAddress,
         CancellationToken cancellationToken = default);
 
     Task ForgetCityAsync(Guid cityId, CancellationToken cancellationToken = default);

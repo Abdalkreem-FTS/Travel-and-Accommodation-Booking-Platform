@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 using Microsoft.Playwright;
 
 using static Microsoft.Playwright.Assertions;
@@ -16,11 +18,21 @@ public sealed class BrowserFixture : IAsyncLifetime
     private static readonly string BaseUrl =
         Environment.GetEnvironmentVariable("E2E_BASE_URL") ?? "http://localhost:8080";
 
+    // The gateway allows ten logins and registrations per client per fifteen minutes, and a run makes
+    // about seven, so a run against the local stack lifts that limit and puts it back when it ends.
+    // A stack named by E2E_BASE_URL is not ours to reconfigure.
+    internal static readonly bool UsesLocalStack = Environment.GetEnvironmentVariable("E2E_BASE_URL") is null;
+
     private IPlaywright? _playwright;
     private IBrowser? _browser;
 
     public async ValueTask InitializeAsync()
     {
+        if (UsesLocalStack)
+        {
+            await RecreateGatewayAsync("docker-compose.yml", "tests/HotelBooking.E2ETests/e2e.compose.yml");
+        }
+
         // Downloads Chromium on the first run; a no-op once it is there.
         var exitCode = Microsoft.Playwright.Program.Main(["install", "chromium"]);
         if (exitCode != 0)
@@ -44,6 +56,40 @@ public sealed class BrowserFixture : IAsyncLifetime
         }
 
         _playwright?.Dispose();
+
+        if (UsesLocalStack)
+        {
+            await RecreateGatewayAsync("docker-compose.yml");
+        }
+    }
+
+    // Recreating the gateway also empties its in-memory limiter, so earlier runs never count.
+    private static async Task RecreateGatewayAsync(params string[] composeFiles)
+    {
+        var compose = new ProcessStartInfo("docker") { WorkingDirectory = RepositoryRoot(), RedirectStandardError = true };
+        foreach (var argument in (string[])["compose", .. composeFiles.SelectMany(file => new[] { "-f", file }), "up", "-d", "--wait", "gateway"])
+        {
+            compose.ArgumentList.Add(argument);
+        }
+
+        using var process = Process.Start(compose)!;
+        var error = await process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"Recreating the gateway failed with exit code {process.ExitCode}: {error}");
+        }
+    }
+
+    internal static string RepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "HotelBooking.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? throw new InvalidOperationException("HotelBooking.slnx not found above the test binaries.");
     }
 
     // A new address every run, so the tests never trip over accounts from an earlier run.

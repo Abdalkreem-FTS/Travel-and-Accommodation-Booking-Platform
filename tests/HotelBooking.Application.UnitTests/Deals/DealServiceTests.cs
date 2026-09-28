@@ -87,7 +87,7 @@ public sealed class DealServiceTests
         var result = await _service.CreateAsync(ADeal(roomId: Guid.NewGuid()), Token);
 
         result.TopError.ShouldBe(DealErrors.RoomNotFound);
-        _deals.DidNotReceiveWithAnyArgs().Add(default!);
+        _deals.DidNotReceiveWithAnyArgs().Add(null!);
         await _unitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(Token);
     }
 }

@@ -93,6 +93,7 @@ public sealed class HotelService(
     public async Task<Result<HotelDto>> GetAsync(
         Guid id,
         Guid? viewerId = null,
+        string? clientAddress = null,
         CancellationToken cancellationToken = default)
     {
         var cached = await cacheService.GetOrSetAsync(
@@ -105,7 +106,8 @@ public sealed class HotelService(
 
         try
         {
-            await visitTracker.RecordHotelViewAsync(id, cached.CityId, viewerId, cancellationToken);
+            await visitTracker.RecordHotelViewAsync(
+                id, cached.CityId, viewerId, clientAddress, cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
