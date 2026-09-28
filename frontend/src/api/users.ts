@@ -1,5 +1,5 @@
 import { apiGet, apiRequest } from './client';
-import type { PagedList } from './types';
+import { ApiError } from './types';
 
 // POST /api/users body (RegisterUserRequest in v1.json).
 export interface RegisterUserRequest {
@@ -28,12 +28,18 @@ export function register(request: RegisterUserRequest): Promise<UserDto> {
 // The roles an admin can grant or revoke (the backend's UserRole enum).
 export type Role = 'User' | 'Admin';
 
-// The account with this email, or null when there is none. Exact match,
+// The account with this email, or null when there is none (the API answers 404 User.NotFound). Exact match,
 // ignoring case and spaces around it. Admins only.
 // Answers 400 with errors.email when the email is missing or malformed.
 export async function findUserByEmail(email: string): Promise<UserDto | null> {
-  const page = await apiGet<PagedList<UserDto>>(`/api/users?email=${encodeURIComponent(email)}`, { auth: true });
-  return page.items[0] ?? null;
+  try {
+    return await apiGet<UserDto>(`/api/users?email=${encodeURIComponent(email)}`, { auth: true });
+  } catch (error) {
+    if (error instanceof ApiError && error.errorCode === 'User.NotFound') {
+      return null;
+    }
+    throw error;
+  }
 }
 
 // Admins only. Granting a role the user already has changes nothing, so it's
