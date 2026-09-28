@@ -58,7 +58,7 @@ public sealed class CityServiceTests
         result.TopError.ShouldBe(CityErrors.HasHotels);
         _city.IsDeleted.ShouldBeFalse();
         await _unitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(Token);
-        await _visits.DidNotReceiveWithAnyArgs().ForgetCityAsync(default, Token);
+        await _visits.DidNotReceiveWithAnyArgs().ForgetCityAsync(Guid.Empty, Token);
     }
 
     [Fact]

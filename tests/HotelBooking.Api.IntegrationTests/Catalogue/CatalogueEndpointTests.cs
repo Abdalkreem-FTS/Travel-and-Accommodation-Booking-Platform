@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -219,7 +220,7 @@ public sealed class CatalogueEndpointTests(ApiFactory factory) : IntegrationTest
     private async Task<HttpResponseMessage> PutHotelAsync(string accessToken, Guid hotelId, object body, string ifMatch)
     {
         using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/hotels/{hotelId}");
-        request.Headers.Authorization = new("Bearer", accessToken);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         request.Headers.TryAddWithoutValidation("If-Match", ifMatch);
         request.Content = JsonContent.Create(body);
 
@@ -229,7 +230,7 @@ public sealed class CatalogueEndpointTests(ApiFactory factory) : IntegrationTest
     private async Task<HttpResponseMessage> DeleteAsync(string accessToken, string route, string ifMatch)
     {
         using var request = new HttpRequestMessage(HttpMethod.Delete, route);
-        request.Headers.Authorization = new("Bearer", accessToken);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         request.Headers.TryAddWithoutValidation("If-Match", ifMatch);
 
         return await Client.SendAsync(request, Token);

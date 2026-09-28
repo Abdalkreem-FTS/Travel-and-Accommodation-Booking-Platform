@@ -13,6 +13,7 @@ public interface IHotelService
     Task<Result<HotelDto>> GetAsync(
         Guid id,
         Guid? viewerId = null,
+        string? clientAddress = null,
         CancellationToken cancellationToken = default);
 
     Task<Result<IReadOnlyList<HotelImageDto>>> GetGalleryAsync(

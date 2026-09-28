@@ -24,9 +24,13 @@ public sealed class RedisVisitStore(
 
     private static readonly TimeSpan RecentTimeToLive = TimeSpan.FromDays(30);
 
+    private static readonly TimeSpan SeenTimeToLive = TimeSpan.FromDays(1);
+
     private const string TrendingDayPrefix = "trending:cities:";
 
     private const string TrendingWindowPrefix = "trending:window:";
+
+    private const string TrendingSeenPrefix = "trending:seen:";
 
     private const string RecentKeyPrefix = "user:";
 
@@ -36,23 +40,20 @@ public sealed class RedisVisitStore(
         Guid hotelId,
         Guid cityId,
         Guid? viewerId,
+        string? clientAddress,
         CancellationToken cancellationToken = default)
     {
         try
         {
             var database = redis.GetDatabase();
-            var batch = database.CreateBatch();
 
-            var today = TrendingDayKey(Today);
+            var counted = CountVisitAsync(database, cityId, Visitor(viewerId, clientAddress));
 
-            List<Task> writes =
-            [
-                batch.SortedSetIncrementAsync(today, Member(cityId), 1),
-                batch.KeyExpireAsync(today, DayTimeToLive)
-            ];
+            List<Task> writes = [counted];
 
             if (viewerId is { } viewer)
             {
+                var batch = database.CreateBatch();
                 var key = RecentKey(viewer);
 
                 writes.Add(batch.SortedSetAddAsync(key, Member(hotelId), Score(dateTimeProvider.UtcNow)));
@@ -61,9 +62,9 @@ public sealed class RedisVisitStore(
                     key, 0, -(VisitLimits.RecentHotelsKept + 1)));
 
                 writes.Add(batch.KeyExpireAsync(key, RecentTimeToLive));
-            }
 
-            batch.Execute();
+                batch.Execute();
+            }
 
             await Task.WhenAll(writes);
 
@@ -74,6 +75,27 @@ public sealed class RedisVisitStore(
         {
             Unreachable(exception, "record");
         }
+    }
+
+    private Task<bool> CountVisitAsync(IDatabase database, Guid cityId, string? visitor)
+    {
+        if (visitor is null)
+        {
+            return Task.FromResult(false);
+        }
+
+        var today = Today;
+        var day = TrendingDayKey(today);
+        var seen = SeenKey(today, cityId, visitor);
+
+        var transaction = database.CreateTransaction();
+        transaction.AddCondition(Condition.KeyNotExists(seen));
+
+        _ = transaction.StringSetAsync(seen, 1, SeenTimeToLive);
+        _ = transaction.SortedSetIncrementAsync(day, Member(cityId), 1);
+        _ = transaction.KeyExpireAsync(day, DayTimeToLive);
+
+        return transaction.ExecuteAsync();
     }
 
     public async Task ForgetCityAsync(Guid cityId, CancellationToken cancellationToken = default)
@@ -173,6 +195,15 @@ public sealed class RedisVisitStore(
 
     public static RedisKey TrendingDayKey(DateOnly day) =>
         TrendingDayPrefix + day.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+
+    private static RedisKey SeenKey(DateOnly day, Guid cityId, string visitor) =>
+        TrendingSeenPrefix + day.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + ":"
+        + Member(cityId) + ":" + visitor;
+
+    private static string? Visitor(Guid? viewerId, string? clientAddress) =>
+        viewerId is { } viewer ? "user:" + viewer.ToString("N")
+        : clientAddress is { Length: > 0 } ? "ip:" + clientAddress
+        : null;
 
     private static RedisKey TrendingWindowKey(DateOnly today) =>
         TrendingWindowPrefix + today.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
