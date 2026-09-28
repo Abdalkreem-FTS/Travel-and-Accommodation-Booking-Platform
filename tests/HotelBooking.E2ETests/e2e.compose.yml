@@ -2,8 +2,10 @@
 # gateway allows ten per client per fifteen minutes, so a second run would meet 429s. This lifts
 # that limit on the gateway alone; nothing else changes.
 #
-#   docker compose -f docker-compose.yml -f tests/HotelBooking.E2ETests/e2e.compose.yml up -d gateway
-#   docker compose up -d gateway        # back to the real limit
+# BrowserFixture applies it when a run starts and restores the real limit when the run ends:
+#
+#   docker compose -f docker-compose.yml -f tests/HotelBooking.E2ETests/e2e.compose.yml up -d --wait gateway
+#   docker compose -f docker-compose.yml up -d --wait gateway        # back to the real limit
 #
 # The main compose file is never edited.
 
